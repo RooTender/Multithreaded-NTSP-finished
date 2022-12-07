@@ -154,10 +154,13 @@
                             <RowDefinition Height="5"></RowDefinition>
                             <RowDefinition Height="20"></RowDefinition>
                             <RowDefinition Height="5"></RowDefinition>
+                            <RowDefinition Height="20"></RowDefinition>
+                            <RowDefinition Height="5"></RowDefinition>
                         </Grid.RowDefinitions>
 
                         <Button Grid.Row="1" Grid.Column="0" Content="Start" Command="{Binding StartCommand}" Width="auto" />
                         <Button Grid.Row="1" Grid.Column="2" Content="Stop" Command="{Binding StopCommand}" Width="auto" />
+                        <Button Grid.Row="3" Grid.Column="2" Content="Update" Command="{Binding UpdateCommand}" Width="auto" />
                     </Grid>
 
                 </StackPanel>

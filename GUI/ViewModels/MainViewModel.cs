@@ -13,7 +13,6 @@ using System.Data;
 using Bridge;
 using System;
 using Calculator;
-using System.Threading;
 
 namespace GUI.ViewModels;
 
@@ -244,6 +243,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ChooseNumberOfEpochsCommand { get; set; }
     public ICommand StartCommand { get; set; }
     public ICommand StopCommand { get; set; }
+    public ICommand UpdateCommand { get; set; }
     public List<Point> Points { get; private set; }
     public List<Node> OrderdNodes { get; private set; }
 
@@ -262,12 +262,18 @@ public class MainViewModel : INotifyPropertyChanged
         ChooseNumberOfEpochsCommand = new RelayCommand(ChooseNumberOfEpochs);
         StartCommand = new RelayCommand(StartCalculations);
         StopCommand = new RelayCommand(StopCalculations);
+        UpdateCommand = new RelayCommand(UpdateCalculations);
 
         ReceivedStatusUpdate += new UpdateStatusEventHandler(UpdateStatus);
         ReceivedBestResult += new UpdateBestResultEventHandler(UpdateBestResult);
 
         MessagingHelper messagingHelper = new(Mechanism);
         MessagingHelper.Setup(ReceivedStatusUpdate, ReceivedBestResult);
+    }
+    // TODO add : https://learn.microsoft.com/en-us/answers/questions/746124/how-to-disable-and-enable-window-close-button-x-in.html
+    private void UpdateCalculations(object obj)
+    {
+        EditCalculations();
     }
 
     private void ChooseNumberOfEpochs(object obj)
@@ -343,7 +349,6 @@ public class MainViewModel : INotifyPropertyChanged
     {
         Stop = true;
         Start = false;
-        EditCalculations();
     }
 
     private void StartCalculations(object obj)
