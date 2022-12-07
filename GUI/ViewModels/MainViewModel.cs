@@ -13,6 +13,8 @@ using System.Data;
 using Bridge;
 using System;
 using Calculator;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace GUI.ViewModels;
 
@@ -247,11 +249,14 @@ public class MainViewModel : INotifyPropertyChanged
     public List<Point> Points { get; private set; }
     public List<Node> OrderdNodes { get; private set; }
 
+    private IntPtr _hwnd;
+
     #endregion
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    public MainViewModel()
+    public MainViewModel(MainWindow mainWindow)
     {
+        _hwnd = new WindowInteropHelper(mainWindow).Handle;
         OpenFileCommand = new RelayCommand(OpenFile);
         ChooseMechanismCommand = new RelayCommand(ChooseMechanism);
         ChooseQuantityForMechanismCommand = new RelayCommand(ChooseQuantityForMechanism);
@@ -308,10 +313,15 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 CalculationStatus = "Ready!";               
                 endOfRun = true;
+                //IntPtr hMenu = GetSystemMenu(_hwnd, false);
+                //EnableMenuItem(hMenu, SC_CLOSE, MF_GRAYED);
             }
             else
             {
                 CalculationStatus = $"Phase: {statusInfo.Phase}";
+
+                //IntPtr hMenu = GetSystemMenu(_hwnd, false);
+                //EnableMenuItem(hMenu, SC_CLOSE, MF_ENABLED);
             }
         }
     }
