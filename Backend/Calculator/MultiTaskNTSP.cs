@@ -19,8 +19,8 @@ public class MultiTaskNTSP
     public CancellationTokenSource _cts = new CancellationTokenSource();
     private IModel _channel;
     private int threadCount;
-    public int phase1TimeOut = 10;
-    public int phase2TimeOut = 100;
+    public int phase1TimeOut;
+    public int phase2TimeOut;
     private int NumberOfEpoch;
     private List<Point> _bestRoute;
 
@@ -49,12 +49,6 @@ public class MultiTaskNTSP
         var body = Encoding.UTF8.GetBytes(statusInfoMsg);
 
         _channel.BasicPublish("", Globals.Mechanism + "StatusInfo", null, body);
-    }
-
-    public MultiTaskNTSP(int threadCount)
-    {
-        this.threadCount = threadCount;
-        NumberOfEpoch = 10;
     }
 
     public List<Point> Run(List<Point> points)

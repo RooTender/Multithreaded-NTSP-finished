@@ -20,8 +20,8 @@ public class MultiThreadNTSP
     public CancellationTokenSource _cts = new CancellationTokenSource();
     private IModel _channel;
     private int threadCount;
-    public int phase1TimeOut = 10; // comment out
-    public int phase2TimeOut = 100;
+    public int phase1TimeOut;
+    public int phase2TimeOut;
     private int NumberOfEpoch;
     private List<Point> _bestRoute;
 
@@ -50,12 +50,6 @@ public class MultiThreadNTSP
         var body = Encoding.UTF8.GetBytes(statusInfoMsg);
 
         _channel.BasicPublish("", Globals.Mechanism + "StatusInfo", null, body);
-    }
-
-    public MultiThreadNTSP(int threadCount)
-    {
-        this.threadCount = threadCount;
-        NumberOfEpoch = 10; //to comment
     }
 
     public List<Point> Run(List<Point> points)
@@ -202,9 +196,6 @@ public class MultiThreadNTSP
 
 	protected void WaitForThreads()
 	{
-		int maxThreads = 0;
-		int placeHolder = 0;
-		int availThreads = 0;
 		int timeOutSeconds = (int)TimeSpan.FromMilliseconds(phase1TimeOut).TotalSeconds;
 
 		//Now wait until all threads from the Threadpool have returned
@@ -215,14 +206,14 @@ public class MultiThreadNTSP
                 break;
             }
 			//figure out what the max worker thread count it
-			ThreadPool.GetMaxThreads(out
-								 maxThreads, out placeHolder);
-			ThreadPool.GetAvailableThreads(out availThreads,
+			ThreadPool.GetMaxThreads(out int
+								 maxThreads, out int placeHolder);
+			ThreadPool.GetAvailableThreads(out int availThreads,
 														   out placeHolder);
 
 			if (availThreads == maxThreads) break;
 			// Sleep
-			System.Threading.Thread.Sleep(TimeSpan.FromMilliseconds(1000));
+			Thread.Sleep(TimeSpan.FromMilliseconds(1000));
 			--timeOutSeconds;
 		}
 		// You can add logic here to log timeouts
