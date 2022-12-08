@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using System.Threading;
 using Bridge;
 using RabbitMQ.Client;
 
@@ -19,7 +20,7 @@ public class MultiThreadNTSP
     public CancellationTokenSource _cts = new CancellationTokenSource();
     private IModel _channel;
     private int threadCount;
-    public int phase1TimeOut = 10;
+    public int phase1TimeOut = 10; // comment out
     public int phase2TimeOut = 100;
     private int NumberOfEpoch;
     private List<Point> _bestRoute;
@@ -90,12 +91,15 @@ public class MultiThreadNTSP
         return routes.OrderBy(list => list.GetTotalDistance()).Take(threadCount).ToList();
     }
 
-    private List<List<Point>> ParrlerPhase1(List<Point> points)
+	delegate void Del(object obj);
+
+	private List<List<Point>> ParrlerPhase1(List<Point> points)
     {
-        CancellationTokenSource phase1Cts = new CancellationTokenSource();
+        var phase1Cts = new CancellationTokenSource();
         using CancellationTokenSource linkedCts = 
             CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, phase1Cts.Token);
-        var TaskQueue = new List<Task>();
+
+
         var pmxList = new List<PMX>();
 
         for (int i = 0; i < threadCount; i++)
@@ -103,17 +107,15 @@ public class MultiThreadNTSP
             var pmx = new PMX(points);
             pmxList.Add(pmx);
 
-            TaskQueue.Add(Task.Factory.StartNew(() =>
-            {
-                pmx.NextGeneration();
-            }, linkedCts.Token));
+			var del = new Del(pmx.NextGeneration);
+			ThreadPool.QueueUserWorkItem(new WaitCallback(del), linkedCts.Token);
         }
 
         phase1Cts.CancelAfter(phase1TimeOut);
 
         try
         {
-            Task.WaitAll(TaskQueue.ToArray(), linkedCts.Token);
+            WaitForThreads();
         }
         catch (OperationCanceledException e)
         {
@@ -143,12 +145,12 @@ public class MultiThreadNTSP
 
     }
 
-    private List<List<Point>> ParrlerPhase1(List<List<Point>> LastGeneration)
+	private List<List<Point>> ParrlerPhase1(List<List<Point>> LastGeneration)
     {
         CancellationTokenSource phase1Cts = new CancellationTokenSource();
         using CancellationTokenSource linkedCts =
                CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, phase1Cts.Token);
-        var taskQueue = new List<Task>();
+
         var firstParentQueue = new Queue<List<Point>>(LastGeneration);
         var secondParentQueue =
             new Queue<List<Point>>(LastGeneration.OrderBy(t => new Random().Next()));
@@ -158,20 +160,19 @@ public class MultiThreadNTSP
         {
             var _firstParent = new List<Point>(firstParentQueue.Dequeue());
             var _secondParent = new List<Point>(secondParentQueue.Dequeue());
-            var pmx = new PMX(_firstParent);
+            var pmx = new PMX(_firstParent, _secondParent);
             pmxList.Add(pmx);
 
-            taskQueue.Add(Task.Factory.StartNew(() =>
-            {
-                pmx.NextGeneration(_firstParent, _secondParent);
-            }, linkedCts.Token));
+			var del = new Del(pmx.NextGeneration);
+			ThreadPool.QueueUserWorkItem(new WaitCallback(del), linkedCts.Token);
         }
         phase1Cts.CancelAfter(phase1TimeOut);
 
         try
         {
-            Task.WaitAll(taskQueue.ToArray(), linkedCts.Token);
-        }
+            WaitForThreads();
+
+		}
         catch (OperationCanceledException e)
         {
             if (_cts.IsCancellationRequested)
@@ -199,7 +200,35 @@ public class MultiThreadNTSP
         return routes;
     }
 
-    private List<List<Point>> ParrlerPhase2(List<List<Point>> aboveMediana)
+	protected void WaitForThreads()
+	{
+		int maxThreads = 0;
+		int placeHolder = 0;
+		int availThreads = 0;
+		int timeOutSeconds = (int)TimeSpan.FromMilliseconds(phase1TimeOut).TotalSeconds;
+
+		//Now wait until all threads from the Threadpool have returned
+		while (timeOutSeconds > 0)
+		{
+            if (_cts.IsCancellationRequested)
+            {
+                break;
+            }
+			//figure out what the max worker thread count it
+			ThreadPool.GetMaxThreads(out
+								 maxThreads, out placeHolder);
+			ThreadPool.GetAvailableThreads(out availThreads,
+														   out placeHolder);
+
+			if (availThreads == maxThreads) break;
+			// Sleep
+			System.Threading.Thread.Sleep(TimeSpan.FromMilliseconds(1000));
+			--timeOutSeconds;
+		}
+		// You can add logic here to log timeouts
+	}
+
+	private List<List<Point>> ParrlerPhase2(List<List<Point>> aboveMediana)
     {
         CancellationTokenSource phase2Cts = new CancellationTokenSource();
         using CancellationTokenSource linkedCts =

@@ -163,7 +163,7 @@ public class MultiTaskNTSP
 
             taskQueue.Add(Task.Factory.StartNew(() =>
             {
-                pmx.NextGeneration(_firstParent, _secondParent);
+                pmx.NextGenerationWithParameters(_firstParent, _secondParent);
             }, linkedCts.Token));
         }
         phase1Cts.CancelAfter(phase1TimeOut);

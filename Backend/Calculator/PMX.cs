@@ -24,8 +24,17 @@ namespace Calculator
 
             _bestParents = (_firstParent, _secondParent);
         }
+        public PMX(List<Point> firstParent, List<Point> secondParent)
+        {
+			_points = firstParent;
+			_firstParent = firstParent.Select(i => _points.IndexOf(i)).ToList();
+			_secondParent = secondParent.Select(i => _points.IndexOf(i)).ToList();
 
-        public List<List<Point>> BestGeneration()
+			_bestResult = Enumerable.Range(0, _points.Count).ToList();
+			_bestParents = (_firstParent, _secondParent);
+		}
+
+		public List<List<Point>> BestGeneration()
         {
             return new List<List<Point>>()
             {
@@ -33,9 +42,46 @@ namespace Calculator
             };
         }
 
-        public void NextGeneration()
+		public void NextGeneration()
+		{
+			var pointsAmount = _points.Count;
+			var sequenceData = CreateSubsequence(pointsAmount);
+
+			var firstParent = NextGenerationChild(_firstParent, _secondParent, sequenceData).ToList();
+			var secondParent = NextGenerationChild(_secondParent, _firstParent, sequenceData).ToList();
+
+			var bestResultDistance = PointUtils.GetTotalDistance(_points, _bestResult);
+			if (bestResultDistance > PointUtils.GetTotalDistance(_points, firstParent))
+			{
+				_bestResult = firstParent;
+				_bestParents = (_firstParent, _secondParent);
+			}
+
+			if (bestResultDistance > PointUtils.GetTotalDistance(_points, secondParent))
+			{
+				_bestResult = secondParent;
+				_bestParents = (_firstParent, _secondParent);
+			}
+
+			_firstParent = firstParent;
+			_secondParent = secondParent;
+
+			Globals.Counter++;
+		}
+
+		public void NextGenerationWithParameters(List<Point> firstParent, List<Point> secondParent)
+		{
+			_points = firstParent;
+			_firstParent = firstParent.Select(i => _points.IndexOf(i)).ToList();
+			_secondParent = secondParent.Select(i => _points.IndexOf(i)).ToList();
+
+			NextGeneration();
+		}
+
+		public void NextGeneration(object state = null)
         {
-            var pointsAmount = _points.Count;
+
+			var pointsAmount = _points.Count;
             var sequenceData = CreateSubsequence(pointsAmount);
 
             var firstParent = NextGenerationChild(_firstParent, _secondParent, sequenceData).ToList();
@@ -58,15 +104,6 @@ namespace Calculator
             _secondParent = secondParent;
 
             Globals.Counter++;
-        }
-
-        public void NextGeneration(List<Point> firstParent, List<Point> secondParent)
-        {
-            _points = firstParent;
-            _firstParent = firstParent.Select(i => _points.IndexOf(i)).ToList();
-            _secondParent = secondParent.Select(i => _points.IndexOf(i)).ToList();
-            
-            NextGeneration();
         }
 
         private static IEnumerable<int> NextGenerationChild(

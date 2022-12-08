@@ -175,8 +175,6 @@ public class MessagingHelper
             Mechanism = mechanism
         };
 
-        Globals.Mechanism = mechanism;
-
         string message = JsonSerializer.Serialize(msg);
 
         var body = Encoding.UTF8.GetBytes(message);

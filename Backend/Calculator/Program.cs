@@ -117,7 +117,7 @@ consumer.Received += (model, ea) =>
     // threads
 	if (ea.RoutingKey == startQueueThreads)
 	{
-		Task.Run(() => ProcessTask(message));
+		Task.Run(() => ProcessThread(message));
 	}
 
 	if (ea.RoutingKey == editQueueThreads)
