@@ -5,9 +5,9 @@ using RabbitMQ.Client;
 
 namespace Calculator;
 
-public class MultiThreadNTSP
+public class MultiTaskNTSP
 {
-    public MultiThreadNTSP(int threadCount, int phase1TimeOut, int phase2TimeOut, int numberOfEpoch, IModel _channel)
+    public MultiTaskNTSP(int threadCount, int phase1TimeOut, int phase2TimeOut, int numberOfEpoch, IModel _channel)
     {
         this.threadCount = threadCount;
         this.phase1TimeOut = phase1TimeOut;
@@ -51,10 +51,10 @@ public class MultiThreadNTSP
         _channel.BasicPublish("", Globals.Mechanism + "StatusInfo", null, body);
     }
 
-    public MultiThreadNTSP(int threadCount)
+    public MultiTaskNTSP(int threadCount)
     {
         this.threadCount = threadCount;
-        NumberOfEpoch = 10; //to comment
+        NumberOfEpoch = 10;
     }
 
     public List<Point> Run(List<Point> points)

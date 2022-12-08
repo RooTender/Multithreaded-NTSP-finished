@@ -13,55 +13,106 @@ namespace GUI.Utils;
 
 public class MessagingHelper
 {
-    public static string? Mechanism { get; private set; }
-
     private static IModel channel;
+    private static string startQueue;
+	private static string editQueue;
+	private static string bestResultQueue;
+	private static string statusInfoQueue;
 
+	private static string startQueueThreads;
+	private static string editQueueThreads;
+	private static string bestResultQueueThreads;
+	private static string statusInfoQueueThreads;
+	
     private static UpdateStatusEventHandler updateStatusHandler;
     private static UpdateBestResultEventHandler updateBestResultEventHandler;
 
-    public MessagingHelper(string? mechanism)
+    public MessagingHelper()
     {
-        Mechanism = mechanism;
     }
 
-    public static void Setup(UpdateStatusEventHandler receivedStatusUpdate, UpdateBestResultEventHandler receivedBestResult)
+    public static void Setup(UpdateStatusEventHandler receivedStatusUpdate, UpdateBestResultEventHandler receivedBestResult, string mechanism)
     {
         // run rabbittmq with docker: docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.11-management
         var factory = new ConnectionFactory() { HostName = "localhost", Port = 5672 };
         var connection = factory.CreateConnection();
         channel = connection.CreateModel();
 
-        channel.QueueDeclare(
-            queue: Mechanism + "Start",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
+        Globals.Mechanism = mechanism;
 
-        channel.QueueDeclare(
-            queue: Mechanism + "Edit", // problem wih initialising with processes
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
 
-        channel.QueueDeclare(
-            queue: Mechanism + "BestResult",
-            durable: false,
-            exclusive: false,
-        autoDelete: false,
-            arguments: null);
+		startQueue = $"{Mechanisms.Tasks}Start";
+		editQueue = $"{Mechanisms.Tasks}Edit";
+		bestResultQueue = $"{Mechanisms.Tasks}BestResult";
+		statusInfoQueue = $"{Mechanisms.Tasks}StatusInfo";
 
-        channel.QueueDeclare(
-            queue: Mechanism + "StatusInfo",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
+		startQueueThreads = $"{Mechanisms.Processes}Start";
+		editQueueThreads = $"{Mechanisms.Processes}Edit";
+		bestResultQueueThreads = $"{Mechanisms.Processes}BestResult";
+		statusInfoQueueThreads = $"{Mechanisms.Processes}StatusInfo";
 
-        // handle status updating
-        updateStatusHandler = receivedStatusUpdate;
+		channel.QueueDeclare(
+			queue: startQueue,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		channel.QueueDeclare(
+			queue: editQueue,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		channel.QueueDeclare(
+			queue: bestResultQueue,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		channel.QueueDeclare(
+			queue: statusInfoQueue,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+
+		// threads
+		channel.QueueDeclare(
+			queue: startQueueThreads,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		channel.QueueDeclare(
+			queue: editQueueThreads,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		channel.QueueDeclare(
+			queue: bestResultQueueThreads,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		channel.QueueDeclare(
+			queue: statusInfoQueueThreads,
+			durable: false,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+
+
+		// handle status updating
+		updateStatusHandler = receivedStatusUpdate;
         updateBestResultEventHandler = receivedBestResult;
     }
 

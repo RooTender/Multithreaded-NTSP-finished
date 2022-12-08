@@ -272,8 +272,7 @@ public class MainViewModel : INotifyPropertyChanged
         ReceivedStatusUpdate += new UpdateStatusEventHandler(UpdateStatus);
         ReceivedBestResult += new UpdateBestResultEventHandler(UpdateBestResult);
 
-        MessagingHelper messagingHelper = new(Mechanism);
-        MessagingHelper.Setup(ReceivedStatusUpdate, ReceivedBestResult);
+        //MessagingHelper messagingHelper = new(Mechanism);
     }
     // TODO add : https://learn.microsoft.com/en-us/answers/questions/746124/how-to-disable-and-enable-window-close-button-x-in.html
     private void UpdateCalculations(object obj)
@@ -363,7 +362,8 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void StartCalculations(object obj)
     {
-        CurrentEpoch = 0;
+		MessagingHelper.Setup(ReceivedStatusUpdate, ReceivedBestResult, Mechanism);
+		CurrentEpoch = 0;
         endOfRun = false;
         Start = true;
         Stop = false;
