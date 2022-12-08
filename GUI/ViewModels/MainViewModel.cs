@@ -15,6 +15,7 @@ using System;
 using Calculator;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Documents;
 
 namespace GUI.ViewModels;
 
@@ -235,7 +236,8 @@ public class MainViewModel : INotifyPropertyChanged
     public event UpdateStatusEventHandler ReceivedStatusUpdate;
     public event UpdateBestResultEventHandler ReceivedBestResult;
 
-    public ICommand OpenFileCommand { get; set; }
+	public MainWindow MainWindow { get; }
+	public ICommand OpenFileCommand { get; set; }
     public ICommand ChooseMechanismCommand { get; set; }
     public ICommand ChooseQuantityForMechanismCommand { get; set; }
     public ICommand ChoosePhaseOneDurationCommand { get; set; }
@@ -246,6 +248,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand StartCommand { get; set; }
     public ICommand StopCommand { get; set; }
     public ICommand UpdateCommand { get; set; }
+    public ICommand ContinueCommand { get; set; }
     public List<Point> Points { get; private set; }
     public List<Node> OrderdNodes { get; private set; }
 
@@ -256,7 +259,7 @@ public class MainViewModel : INotifyPropertyChanged
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public MainViewModel(MainWindow mainWindow)
     {
-        _hwnd = new WindowInteropHelper(mainWindow).Handle;
+        MainWindow = mainWindow;
         OpenFileCommand = new RelayCommand(OpenFile);
         ChooseMechanismCommand = new RelayCommand(ChooseMechanism);
         ChooseQuantityForMechanismCommand = new RelayCommand(ChooseQuantityForMechanism);
@@ -268,14 +271,35 @@ public class MainViewModel : INotifyPropertyChanged
         StartCommand = new RelayCommand(StartCalculations);
         StopCommand = new RelayCommand(StopCalculations);
         UpdateCommand = new RelayCommand(UpdateCalculations);
+		ContinueCommand = new RelayCommand(ContinueCalculations);
 
         ReceivedStatusUpdate += new UpdateStatusEventHandler(UpdateStatus);
         ReceivedBestResult += new UpdateBestResultEventHandler(UpdateBestResult);
 
         //MessagingHelper messagingHelper = new(Mechanism);
     }
-    // TODO add : https://learn.microsoft.com/en-us/answers/questions/746124/how-to-disable-and-enable-window-close-button-x-in.html
-    private void UpdateCalculations(object obj)
+
+	private void ContinueCalculations(object obj)
+	{
+		Start = true;
+		Stop = false;
+
+		PhaseOneDurationInMs = TimeManager.GetDurationInMs(PhaseOneDuration, PhaseOneMeasureUnit);
+		PhaseTwoDurationInMs = TimeManager.GetDurationInMs(PhaseOneDuration, PhaseOneMeasureUnit);
+
+		MessagingHelper.SendInitialMessageFromClient(
+			PhaseOneDurationInMs,
+			PhaseTwoDurationInMs,
+			QuantityForMechanism,
+			NumberOfEpochs - CurrentEpoch,
+        Points,
+			Mechanism);
+
+		MainWindow.tb_Click(true);
+	}
+
+	// TODO add : https://learn.microsoft.com/en-us/answers/questions/746124/how-to-disable-and-enable-window-close-button-x-in.html
+	private void UpdateCalculations(object obj)
     {
         EditCalculations();
     }
@@ -312,16 +336,12 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 CalculationStatus = "Ready!";               
                 endOfRun = true;
-                //IntPtr hMenu = GetSystemMenu(_hwnd, false);
-                //EnableMenuItem(hMenu, SC_CLOSE, MF_GRAYED);
-            }
+				MainWindow.tb_Click(false);
+			}
             else
             {
                 CalculationStatus = $"Phase: {statusInfo.Phase}";
-
-                //IntPtr hMenu = GetSystemMenu(_hwnd, false);
-                //EnableMenuItem(hMenu, SC_CLOSE, MF_ENABLED);
-            }
+			}
         }
     }
 
@@ -358,7 +378,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         Stop = true;
         Start = false;
-    }
+	}
 
     private void StartCalculations(object obj)
     {
@@ -379,12 +399,21 @@ public class MainViewModel : INotifyPropertyChanged
             Points,
             Mechanism);
 
-        MessagingHelper.ReceiveMessages();
+		MainWindow.tb_Click(true);
+		MessagingHelper.ReceiveMessages();
     }
 
     private void EditCalculations()
     {
-        MessagingHelper.SendEditMessage(Stop, PhaseOneDurationInMs, PhaseTwoDurationInMs);
+        if (Start)
+        {
+			MainWindow.tb_Click(true);
+		}
+        else
+        {
+			MainWindow.tb_Click(false);
+		}
+		MessagingHelper.SendEditMessage(Stop, PhaseOneDurationInMs, PhaseTwoDurationInMs);
     }
 
     private void ChoosePhaseOneMeasureUnit(object obj)

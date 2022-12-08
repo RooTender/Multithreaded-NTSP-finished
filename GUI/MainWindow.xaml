@@ -34,7 +34,7 @@
                     
                     <RadioButton x:Name="Tasks" IsChecked="True" Command="{Binding ChooseMechanismCommand}" Content="{Binding Tasks}" CommandParameter="{Binding Tasks}"/>
 
-                    <RadioButton x:Name="Processes" Command="{Binding ChooseMechanismCommand}" Content="Threads" CommandParameter="{Binding Processes}"/>
+                    <RadioButton x:Name="Processes" Command="{Binding ChooseMechanismCommand}" Content="threads" CommandParameter="{Binding Processes}"/>
                 </StackPanel>
                 <!--Choose quantity for mechanism-->
                 <StackPanel Margin="5">
@@ -159,8 +159,9 @@
                         </Grid.RowDefinitions>
 
                         <Button Grid.Row="1" Grid.Column="0" Content="Start" Command="{Binding StartCommand}" Width="auto" />
-                        <Button Grid.Row="1" Grid.Column="2" Content="Stop" Command="{Binding StopCommand}" Width="auto" />
-                        <Button Grid.Row="3" Grid.Column="2" Content="Update" Command="{Binding UpdateCommand}" Width="auto" />
+                        <Button Grid.Row="1" Grid.Column="2" Content="Update" Command="{Binding UpdateCommand}" Width="auto" />
+                        <Button Grid.Row="3" Grid.Column="0" Content="Stop" Command="{Binding StopCommand}" Width="auto" />
+                        <Button Grid.Row="3" Grid.Column="2" Content="Continue" Command="{Binding ContinueCommand}" Width="auto" />
                     </Grid>
 
                 </StackPanel>

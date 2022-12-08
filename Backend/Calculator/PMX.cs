@@ -123,6 +123,7 @@ namespace Calculator
         private static IEnumerable<int> GetIndexesOfCrossedParents(IReadOnlyList<int> firstParent, List<int> secondParent, List<int> seq, int seqAnchor)
         {
             var nextGeneration = new int[firstParent.Count];
+
             for (var i = 0; i < secondParent.Count; i++)
             {
                 nextGeneration[i] = secondParent[i];
