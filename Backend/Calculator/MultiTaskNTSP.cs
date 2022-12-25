@@ -7,23 +7,25 @@ namespace Calculator;
 
 public class MultiTaskNTSP
 {
-    public MultiTaskNTSP(int threadCount, int phase1TimeOut, int phase2TimeOut, int numberOfEpoch, IModel _channel)
-    {
-        this.threadCount = threadCount;
-        this.phase1TimeOut = phase1TimeOut;
-        this.phase2TimeOut = phase2TimeOut;
-        NumberOfEpoch = numberOfEpoch;
-        this._channel = _channel;
-    }
-
-    public CancellationTokenSource _cts = new CancellationTokenSource();
-    private IModel _channel;
-    private int threadCount;
-    public int phase1TimeOut;
-    public int phase2TimeOut;
-    private int NumberOfEpoch;
+    private readonly IModel _channel;
+    private readonly int _tasksCount;
+    private readonly int _maxCycles;
     private List<Point> _bestRoute;
 
+    public MultiTaskNTSP(int tasksCount, int firstPhaseTimeout, int secondPhaseTimeout, int maxCycles, IModel channel)
+    {
+        _tasksCount = tasksCount;
+        _maxCycles = maxCycles;
+        _channel = channel;
+        _bestRoute = new List<Point>();
+
+        FirstPhaseTimeout = firstPhaseTimeout;
+        SecondPhaseTimeout = secondPhaseTimeout;
+    }
+
+    public CancellationTokenSource CancellationToken = new();
+    public int FirstPhaseTimeout;
+    public int SecondPhaseTimeout;
     public List<Point> BestRoute
     {
         get => _bestRoute;
@@ -31,24 +33,12 @@ public class MultiTaskNTSP
         {
             Console.WriteLine($"New best route found: {value.GetTotalDistance()}");
             
-            string bestResultMsg = JsonSerializer.Serialize(new Results { points = value });
-
+            var bestResultMsg = JsonSerializer.Serialize(new Results { Points = value });
             var bestResultBody = Encoding.UTF8.GetBytes(bestResultMsg);
 
             _channel.BasicPublish("", Globals.Mechanism + "BestResult", null, bestResultBody);
             _bestRoute = value;
         }
-    }
-
-    private void SendStatusMessage(int phase)
-    {
-        Console.WriteLine($"Status info: \n\tphase: {phase} \n\tsolution counter: {Globals.Counter}");
-
-        string statusInfoMsg = JsonSerializer.Serialize(new StatusInfo { Phase = phase, SolutionCounter = Globals.Counter });
-
-        var body = Encoding.UTF8.GetBytes(statusInfoMsg);
-
-        _channel.BasicPublish("", Globals.Mechanism + "StatusInfo", null, body);
     }
 
     public List<Point> Run(List<Point> points)
@@ -57,61 +47,73 @@ public class MultiTaskNTSP
 
         try
         {
-            var routes = ParrlerPhase1(points);
+            var routes = ParallelFirstPhase(points);
             SendStatusMessage(1);
-            var aboveMediana = GetSolutionsAboveMediana(routes);
-            var generetionAfterPhase2 = ParrlerPhase2(aboveMediana);
+
+            var aboveMedianSolutions = GetSolutionsAboveMedian(routes);
+            var secondPhaseSolutions = ParallelSecondPhase(aboveMedianSolutions);
             SendStatusMessage(2);
 
-            for (int i = 0; i < NumberOfEpoch ; i++)
+            for (var i = 0; i < _maxCycles; i++)
             {
-                routes = ParrlerPhase1(generetionAfterPhase2);
+                routes = ParallelFirstPhase(secondPhaseSolutions);
                 SendStatusMessage(1);
-                aboveMediana = GetSolutionsAboveMediana(routes);
-                generetionAfterPhase2 = ParrlerPhase2(aboveMediana);
+
+                aboveMedianSolutions = GetSolutionsAboveMedian(routes);
+                secondPhaseSolutions = ParallelSecondPhase(aboveMedianSolutions);
                 SendStatusMessage(2);
 
-                Console.WriteLine("Best distance: " + generetionAfterPhase2.Min(list => list.GetTotalDistance()));
+                Console.WriteLine("Best distance: " + secondPhaseSolutions.Min(list => list.GetTotalDistance()));
             }
         }
-        catch (OperationCanceledException e) {}
+        catch (OperationCanceledException) {}
 
         return BestRoute;
     }
 
-    private List<List<Point>> GetSolutionsAboveMediana(List<List<Point>> routes)
+    private void SendStatusMessage(int phase)
     {
-        return routes.OrderBy(list => list.GetTotalDistance()).Take(threadCount).ToList();
+        Console.WriteLine($"Status info: \n\tphase: {phase} \n\tsolution counter: {Globals.Counter}");
+
+        var statusMessage = JsonSerializer.Serialize(new StatusInfo { Phase = phase, SolutionCounter = Globals.Counter });
+        var body = Encoding.UTF8.GetBytes(statusMessage);
+
+        _channel.BasicPublish("", Globals.Mechanism + "StatusInfo", null, body);
     }
 
-    private List<List<Point>> ParrlerPhase1(List<Point> points)
+    private List<List<Point>> GetSolutionsAboveMedian(IEnumerable<List<Point>> routes)
     {
-        CancellationTokenSource phase1Cts = new CancellationTokenSource();
-        using CancellationTokenSource linkedCts = 
-            CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, phase1Cts.Token);
-        var TaskQueue = new List<Task>();
+        return routes.OrderBy(list => list.GetTotalDistance()).Take(_tasksCount).ToList();
+    }
+
+    private List<List<Point>> ParallelFirstPhase(List<Point> points)
+    {
+        var phase1Cts = new CancellationTokenSource();
+        using var linkedCts = 
+            CancellationTokenSource.CreateLinkedTokenSource(CancellationToken.Token, phase1Cts.Token);
+        var tasks = new List<Task>();
         var pmxList = new List<PMX>();
 
-        for (int i = 0; i < threadCount; i++)
+        for (var i = 0; i < _tasksCount; i++)
         {
             var pmx = new PMX(points);
             pmxList.Add(pmx);
 
-            TaskQueue.Add(Task.Factory.StartNew(() =>
+            tasks.Add(Task.Factory.StartNew(() =>
             {
                 pmx.NextGeneration();
             }, linkedCts.Token));
         }
 
-        phase1Cts.CancelAfter(phase1TimeOut);
+        phase1Cts.CancelAfter(FirstPhaseTimeout);
 
         try
         {
-            Task.WaitAll(TaskQueue.ToArray(), linkedCts.Token);
+            Task.WaitAll(tasks.ToArray(), linkedCts.Token);
         }
-        catch (OperationCanceledException e)
+        catch (OperationCanceledException)
         {
-            if (_cts.IsCancellationRequested)
+            if (CancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Phase 1 was canceled");
                 throw;
@@ -137,38 +139,38 @@ public class MultiTaskNTSP
 
     }
 
-    private List<List<Point>> ParrlerPhase1(List<List<Point>> LastGeneration)
+    private List<List<Point>> ParallelFirstPhase(IReadOnlyCollection<List<Point>> lastGeneration)
     {
-        CancellationTokenSource phase1Cts = new CancellationTokenSource();
-        using CancellationTokenSource linkedCts =
-               CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, phase1Cts.Token);
+        var phase1Cts = new CancellationTokenSource();
+        using var linkedCts =
+               CancellationTokenSource.CreateLinkedTokenSource(CancellationToken.Token, phase1Cts.Token);
         var taskQueue = new List<Task>();
-        var firstParentQueue = new Queue<List<Point>>(LastGeneration);
+        var firstParentQueue = new Queue<List<Point>>(lastGeneration);
         var secondParentQueue =
-            new Queue<List<Point>>(LastGeneration.OrderBy(t => new Random().Next()));
+            new Queue<List<Point>>(lastGeneration.OrderBy(_ => new Random().Next()));
         var pmxList = new List<PMX>();
 
-        for (int i = 0; i < threadCount; i++)
+        for (var i = 0; i < _tasksCount; i++)
         {
-            var _firstParent = new List<Point>(firstParentQueue.Dequeue());
-            var _secondParent = new List<Point>(secondParentQueue.Dequeue());
-            var pmx = new PMX(_firstParent);
+            var firstParent = new List<Point>(firstParentQueue.Dequeue());
+            var secondParent = new List<Point>(secondParentQueue.Dequeue());
+            var pmx = new PMX(firstParent);
             pmxList.Add(pmx);
 
             taskQueue.Add(Task.Factory.StartNew(() =>
             {
-                pmx.NextGenerationWithParameters(_firstParent, _secondParent);
+                pmx.NextGenerationWithParameters(firstParent, secondParent);
             }, linkedCts.Token));
         }
-        phase1Cts.CancelAfter(phase1TimeOut);
+        phase1Cts.CancelAfter(FirstPhaseTimeout);
 
         try
         {
             Task.WaitAll(taskQueue.ToArray(), linkedCts.Token);
         }
-        catch (OperationCanceledException e)
+        catch (OperationCanceledException)
         {
-            if (_cts.IsCancellationRequested)
+            if (CancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Phase 1 was canceled");
                 throw;
@@ -193,19 +195,18 @@ public class MultiTaskNTSP
         return routes;
     }
 
-    private List<List<Point>> ParrlerPhase2(List<List<Point>> aboveMediana)
+    private List<List<Point>> ParallelSecondPhase(IReadOnlyList<List<Point>> aboveMedian)
     {
-        CancellationTokenSource phase2Cts = new CancellationTokenSource();
-        using CancellationTokenSource linkedCts =
-               CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, phase2Cts.Token);
+        var phase2Cts = new CancellationTokenSource();
+        using var linkedCts =
+               CancellationTokenSource.CreateLinkedTokenSource(CancellationToken.Token, phase2Cts.Token);
 
-        var taskQueue2 = new Task[threadCount];
-        BestCycle[] bestCycles = new BestCycle[threadCount];
+        var taskQueue2 = new Task[_tasksCount];
+        var bestCycles = new BestCycle[_tasksCount];
 
-        for (int i = 0; i < threadCount; i++)
+        for (var i = 0; i < _tasksCount; i++)
         {
-            var index = i;
-            var route = aboveMediana[index];
+            var route = aboveMedian[i];
 
             var bestCycle = new BestCycle(route);
             bestCycles[i] = bestCycle;
@@ -215,14 +216,14 @@ public class MultiTaskNTSP
             }, linkedCts.Token);
         }
 
-        phase2Cts.CancelAfter(phase2TimeOut);
+        phase2Cts.CancelAfter(SecondPhaseTimeout);
         try
         {
             Task.WaitAll(taskQueue2, linkedCts.Token);
         }
-        catch (OperationCanceledException e)
+        catch (OperationCanceledException)
         {
-            if (_cts.IsCancellationRequested)
+            if (CancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Phase 2 was canceled");
                 throw;
@@ -247,9 +248,9 @@ public class MultiTaskNTSP
         return results;
 
     }
+
     internal class Results
     {
-        public List<Point> points { get; set; } = new List<Point>();
+        public List<Point> Points { get; set; } = new();
     }
-    
 }

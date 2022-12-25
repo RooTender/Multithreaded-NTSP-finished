@@ -104,12 +104,12 @@ consumer.Received += (model, ea) =>
         var msgUserChanges = JsonSerializer.Deserialize<UserChanges>(message);
         if(multiTaskNTSP != null)
         {
-            multiTaskNTSP.phase1TimeOut = msgUserChanges.NewTimeA;
-            multiTaskNTSP.phase2TimeOut = msgUserChanges.NewTimeB;
+            multiTaskNTSP.FirstPhaseTimeout = msgUserChanges.NewTimeA;
+            multiTaskNTSP.SecondPhaseTimeout = msgUserChanges.NewTimeB;
 
             if(msgUserChanges.Stop) 
             {
-                multiTaskNTSP._cts.Cancel();
+                multiTaskNTSP.CancellationToken.Cancel();
             }
         }
     }
@@ -125,12 +125,12 @@ consumer.Received += (model, ea) =>
 		var msgUserChanges = JsonSerializer.Deserialize<UserChanges>(message);
 		if (multiThreadNTSP != null)
 		{
-			multiThreadNTSP.phase1TimeOut = msgUserChanges.NewTimeA;
-			multiThreadNTSP.phase2TimeOut = msgUserChanges.NewTimeB;
+			multiThreadNTSP.FirstPhaseTimeout = msgUserChanges.NewTimeA;
+			multiThreadNTSP.SecondPhaseTimeout = msgUserChanges.NewTimeB;
 
 			if (msgUserChanges.Stop)
 			{
-				multiThreadNTSP._cts.Cancel();
+				multiThreadNTSP.CancellationToken.Cancel();
 			}
 		}
 	}
