@@ -9,32 +9,21 @@ namespace GUI.Utils;
 
 public static class FileManager
 {
-    private static readonly int _nrOfDummyLines = 7;
-
-    public static List<Point> ReadPoints(string filePath = "C:\\Users\\grzeg\\source\\repos\\MultithreadedNTSP\\GUI\\PointSets\\wi29.tsp")
+    public static List<Point> ReadPoints(string filePath)
     {
-        var points = new List<Point>();
-
-        foreach (string line in File.ReadLines(filePath).Skip(_nrOfDummyLines))
-        {
-            if (line != "EOF")
-            {
-                points.Add(GetPointFromLine(line));
-            }
-        }
-
-        return points;
-        // append one more time last node to obtain cycle needed in NTSP
+        return (from line in File.ReadLines(filePath) where !char.IsLetter(line[0])
+            where line != "EOF"
+            select ReadPoint(line)).ToList();
     }
 
-    private static Point GetPointFromLine(string line)
+    private static Point ReadPoint(string line)
     {
-        var lineContent = line.Split(' ')[1..3];
+        var data = line.Split(' ')[1..3];
 
         try
         {
-            var x = double.Parse(lineContent[0], CultureInfo.InvariantCulture);
-            var y = double.Parse(lineContent[1], CultureInfo.InvariantCulture);
+            var x = double.Parse(data[0], CultureInfo.InvariantCulture);
+            var y = double.Parse(data[1], CultureInfo.InvariantCulture);
 
             return new Point(x, y);
         }
