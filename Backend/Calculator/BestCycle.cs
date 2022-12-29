@@ -15,10 +15,15 @@ namespace Calculator
         {
             return NodeCycleToPoints(_bestResult);
         }
-        
-        public IEnumerable<Point> Find()
+
+        public void Find(object? _)
         {
-            if (_bestResult.Count < 6) return GetBest();
+            Find();
+        }
+        
+        public void Find()
+        {
+            if (_bestResult.Count < 6) return;
             
             for (var i = 0; i < _bestResult.Count - 1; ++i)
             {
@@ -49,8 +54,6 @@ namespace Calculator
                     }
                 }
             }
-
-            return GetBest();
         }
 
         private static List<Point> NodeCycleToPoints(IReadOnlyList<Node<Point>> cycle)

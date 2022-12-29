@@ -12,10 +12,11 @@ namespace Calculator
             return points.GetTotalDistance();
         }
 
-        public static double GetTotalDistance(this IEnumerable<Point> points)
+        public static double GetTotalDistance(this List<Point> points)
         {
             double result = 0;
             var previousPoint = points.First();
+
             foreach (var point in points.Skip(1))
             {
                 result += previousPoint.Distance(point);

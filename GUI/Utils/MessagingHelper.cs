@@ -11,19 +11,19 @@ namespace GUI.Utils;
 
 public class MessagingHelper
 {
-    private static IModel channel;
-    private static string startQueue;
-	private static string editQueue;
-	private static string bestResultQueue;
-	private static string statusInfoQueue;
+    private static IModel _channel;
+    private static string _startQueue;
+	private static string _editQueue;
+	private static string _bestResultQueue;
+	private static string _statusInfoQueue;
 
-	private static string startQueueThreads;
-	private static string editQueueThreads;
-	private static string bestResultQueueThreads;
-	private static string statusInfoQueueThreads;
+	private static string _startQueueThreads;
+	private static string _editQueueThreads;
+	private static string _bestResultQueueThreads;
+	private static string _statusInfoQueueThreads;
 	
-    private static UpdateStatusEventHandler updateStatusHandler;
-    private static UpdateBestResultEventHandler updateBestResultEventHandler;
+    private static UpdateStatusEventHandler _updateStatusHandler;
+    private static UpdateBestResultEventHandler _updateBestResultEventHandler;
 
     public MessagingHelper()
     {
@@ -34,44 +34,44 @@ public class MessagingHelper
         // run rabbittmq with docker: docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.11-management
         var factory = new ConnectionFactory() { HostName = "localhost", Port = 5672 };
         var connection = factory.CreateConnection();
-        channel = connection.CreateModel();
+        _channel = connection.CreateModel();
 
         Globals.Mechanism = mechanism;
 
 
-		startQueue = $"{Mechanisms.Tasks}Start";
-		editQueue = $"{Mechanisms.Tasks}Edit";
-		bestResultQueue = $"{Mechanisms.Tasks}BestResult";
-		statusInfoQueue = $"{Mechanisms.Tasks}StatusInfo";
+		_startQueue = $"{Mechanisms.Tasks}Start";
+		_editQueue = $"{Mechanisms.Tasks}Edit";
+		_bestResultQueue = $"{Mechanisms.Tasks}BestResult";
+		_statusInfoQueue = $"{Mechanisms.Tasks}StatusInfo";
 
-		startQueueThreads = $"{Mechanisms.Processes}Start";
-		editQueueThreads = $"{Mechanisms.Processes}Edit";
-		bestResultQueueThreads = $"{Mechanisms.Processes}BestResult";
-		statusInfoQueueThreads = $"{Mechanisms.Processes}StatusInfo";
+		_startQueueThreads = $"{Mechanisms.Processes}Start";
+		_editQueueThreads = $"{Mechanisms.Processes}Edit";
+		_bestResultQueueThreads = $"{Mechanisms.Processes}BestResult";
+		_statusInfoQueueThreads = $"{Mechanisms.Processes}StatusInfo";
 
-		channel.QueueDeclare(
-			queue: startQueue,
+		_channel.QueueDeclare(
+			queue: _startQueue,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
 			arguments: null);
 
-		channel.QueueDeclare(
-			queue: editQueue,
+		_channel.QueueDeclare(
+			queue: _editQueue,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
 			arguments: null);
 
-		channel.QueueDeclare(
-			queue: bestResultQueue,
+		_channel.QueueDeclare(
+			queue: _bestResultQueue,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
 			arguments: null);
 
-		channel.QueueDeclare(
-			queue: statusInfoQueue,
+		_channel.QueueDeclare(
+			queue: _statusInfoQueue,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
@@ -79,29 +79,29 @@ public class MessagingHelper
 
 
 		// threads
-		channel.QueueDeclare(
-			queue: startQueueThreads,
+		_channel.QueueDeclare(
+			queue: _startQueueThreads,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
 			arguments: null);
 
-		channel.QueueDeclare(
-			queue: editQueueThreads,
+		_channel.QueueDeclare(
+			queue: _editQueueThreads,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
 			arguments: null);
 
-		channel.QueueDeclare(
-			queue: bestResultQueueThreads,
+		_channel.QueueDeclare(
+			queue: _bestResultQueueThreads,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
 			arguments: null);
 
-		channel.QueueDeclare(
-			queue: statusInfoQueueThreads,
+		_channel.QueueDeclare(
+			queue: _statusInfoQueueThreads,
 			durable: false,
 			exclusive: false,
 			autoDelete: false,
@@ -110,21 +110,21 @@ public class MessagingHelper
 
 
 		// handle status updating
-		updateStatusHandler = receivedStatusUpdate;
-        updateBestResultEventHandler = receivedBestResult;
+		_updateStatusHandler = receivedStatusUpdate;
+        _updateBestResultEventHandler = receivedBestResult;
     }
 
     public static void ReceiveMessages()
     {
-        var consumer = new EventingBasicConsumer(channel);
+        var consumer = new EventingBasicConsumer(_channel);
 
         var startQueue = $"{Globals.Mechanism}Start";
         var editQueue = $"{Globals.Mechanism}Edit";
         var statusInfoQueue = $"{Globals.Mechanism}StatusInfo";
         var bestResultQueue = $"{Globals.Mechanism}BestResult";
 
-        channel.BasicConsume(queue: statusInfoQueue, autoAck: true, consumer: consumer);
-        channel.BasicConsume(queue: bestResultQueue, autoAck: true, consumer: consumer);
+        _channel.BasicConsume(queue: statusInfoQueue, autoAck: true, consumer: consumer);
+        _channel.BasicConsume(queue: bestResultQueue, autoAck: true, consumer: consumer);
 
         consumer.Received += (model, ea) =>
             {
@@ -138,7 +138,7 @@ public class MessagingHelper
 
                     if (results != null)
                     {
-                        updateStatusHandler?.Invoke(results);
+                        _updateStatusHandler?.Invoke(results);
                     }
                 }
 
@@ -149,7 +149,7 @@ public class MessagingHelper
 
                     if (results != null)
                     {
-                        updateBestResultEventHandler?.Invoke(results);
+                        _updateBestResultEventHandler?.Invoke(results);
                     }
                 }
             };
@@ -177,14 +177,14 @@ public class MessagingHelper
 
         var body = Encoding.UTF8.GetBytes(message);
 
-        channel.BasicPublish("", Globals.Mechanism + "Start", null, body);
+        _channel.BasicPublish("", Globals.Mechanism + "Start", null, body);
 
         Console.WriteLine("Published initial message!");
     }
 
     public static void CloseConnection()
     {
-        channel.Dispose();
+        _channel.Dispose();
     }
 
     public static void SendEditMessage(bool stop, int phaseOneDurationInMs, int phaseTwoDurationInMs)
@@ -200,7 +200,7 @@ public class MessagingHelper
 
         var body = Encoding.UTF8.GetBytes(userChangesMsg);
 
-        channel.BasicPublish("", Globals.Mechanism + "Edit", null, body);
+        _channel.BasicPublish("", Globals.Mechanism + "Edit", null, body);
 
         Console.WriteLine(" [x] Sent {0}", userChangesMsg);
     }
