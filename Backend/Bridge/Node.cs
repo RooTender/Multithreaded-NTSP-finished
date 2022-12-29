@@ -34,13 +34,4 @@ internal class Node<T>
     {
         return _next;
     }
-
-    public Node<T> Copy()
-    {
-        return new Node<T>(Value)
-        {
-            _previous = _previous,
-            _next = _next
-        };
-    }
 }

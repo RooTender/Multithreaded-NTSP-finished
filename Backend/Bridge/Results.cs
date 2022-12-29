@@ -4,5 +4,5 @@ namespace Bridge;
 
 public class Results
 {
-    public List<Point> points { get; set; } = new List<Point>();
+    public List<Point> Points { get; set; } = new();
 }

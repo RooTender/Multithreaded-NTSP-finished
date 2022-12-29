@@ -9,13 +9,9 @@ using System.Collections.ObjectModel;
 using GUI.Model;
 using System.Linq;
 using System.Collections.Generic;
-using System.Data;
 using Bridge;
 using System;
 using Calculator;
-using System.Runtime.InteropServices;
-using System.Windows.Interop;
-using System.Windows.Documents;
 
 namespace GUI.ViewModels;
 
@@ -24,10 +20,10 @@ public delegate void UpdateBestResultEventHandler(Results results);
 
 internal static class DefaultValues
 {
-    internal readonly static int PhaseDuration = 2;
-    internal readonly static int QuantityForMechanism = 8;
-    internal readonly static int NumberOfEpochs = 50;  // mayby add to front
-    internal readonly static char MeasureUnit = TimeManager.Units.Seconds;
+    internal static readonly int PhaseDuration = 2;
+    internal static readonly int QuantityForMechanism = 8;
+    internal static readonly int NumberOfEpochs = 50;  // mayby add to front
+    internal static readonly char MeasureUnit = TimeManager.Units.Seconds;
 }
 
 public class MainViewModel : INotifyPropertyChanged
@@ -312,7 +308,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void UpdateBestResult(Results results)
     {
-        Points = results.points;
+        Points = results.Points;
         BestResult = Math.Round(Points.GetTotalDistance(), 2).ToString();
         DrawGraph(Points);
         UpdateNodesDataGrid(Points);

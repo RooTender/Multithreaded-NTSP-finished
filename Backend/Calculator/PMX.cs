@@ -1,6 +1,4 @@
 ﻿using Bridge;
-using System.Diagnostics.Metrics;
-using System.Reflection;
 
 namespace Calculator
 {

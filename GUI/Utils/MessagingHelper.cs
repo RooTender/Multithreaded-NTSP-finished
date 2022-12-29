@@ -5,9 +5,7 @@ using System.Text.Json;
 using System.Text;
 using System;
 using System.Collections.Generic;
-using System.Windows;
 using GUI.ViewModels;
-using System.Threading;
 
 namespace GUI.Utils;
 
