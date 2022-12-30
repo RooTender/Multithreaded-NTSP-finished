@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 
 namespace GUI;
@@ -11,38 +12,33 @@ namespace GUI;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private readonly IntPtr _systemMenu;
+    private const uint CloseMenuButton = 0xF060;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainViewModel(this);
+
+        var windowHandle = new IntPtr();
+        Dispatcher.Invoke(() => { windowHandle = new WindowInteropHelper(this).Handle; });
+
+        _systemMenu = GetSystemMenu(windowHandle, false);
     }
 
-	[DllImport("user32.dll")]
-	static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
-	[DllImport("user32.dll")]
-	static extern bool EnableMenuItem(IntPtr hMenu, uint uIDEnableItem, uint uEnable);
+    public void DisableWindowClosing()
+    {
+        EnableMenuItem(_systemMenu, CloseMenuButton, 0x00000001);
+    }
 
-	const uint MF_GRAYED = 0x00000001;
-	const uint MF_ENABLED = 0x00000000;
-	const uint SC_CLOSE = 0xF060;
-
-	public void tb_Click(bool disable)
+	public void EnableWindowClosing()
 	{
-		IntPtr hwnd = new IntPtr();
-		if (disable)
-		{
-			this.Dispatcher.Invoke((Action)(() => { hwnd = new WindowInteropHelper(this).Handle; }));
-			IntPtr hMenu = GetSystemMenu(hwnd, false);
-			EnableMenuItem(hMenu, SC_CLOSE, MF_GRAYED);
-		}
-		else
-		{
-			
-			this.Dispatcher.Invoke((Action)(() => { hwnd = new WindowInteropHelper(this).Handle; }));
-			
-			IntPtr hMenu = GetSystemMenu(hwnd, false);
-			EnableMenuItem(hMenu, SC_CLOSE, MF_ENABLED);
-		}
-	}
+        EnableMenuItem(_systemMenu, CloseMenuButton, 0x0);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnableMenuItem(IntPtr hMenu, uint uIDEnableItem, uint uEnable);
 }

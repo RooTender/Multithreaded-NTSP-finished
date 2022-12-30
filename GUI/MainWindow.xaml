@@ -7,73 +7,62 @@
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:oxy="clr-namespace:OxyPlot.Wpf;assembly=OxyPlot.Wpf"
         mc:Ignorable="d"
-        Title="Multithreaded NTSP"  Height="600" Width="1000">
+        Title="MultiThreaded NTSP"  Height="600" Width="1000">
     <Grid>
         <Border Padding="10">
-            <StackPanel Width="250" HorizontalAlignment="Left">
-                <!--Open file-->
+            <StackPanel Width="250" HorizontalAlignment="Left" Margin="0,10,0,-10">
+
                 <StackPanel Margin="5">
-                    <Label Grid.Row="1" Grid.Column="1" FontWeight="Bold">Open file</Label>
-                    <TextBox Grid.Row="3" Grid.Column="1" TextWrapping="NoWrap" Text="{Binding FileName}" Width="auto" IsReadOnly = "True"/>
-                    <Button Grid.Row="5" Grid.Column="1" Content="Open file" Command="{Binding OpenFileCommand}" Width="auto" />
+                    <Label FontWeight="Bold">Open file</Label>
+                    <TextBox TextWrapping="NoWrap" Text="{Binding FileName}" Width="auto" IsReadOnly = "True"/>
+                    <Button Content="Open file" Command="{Binding OpenFileCommand}" Width="auto" />
                 </StackPanel>
-                <!--Choose number of epochs-->
+                
                 <StackPanel Margin="5">
                     <Label FontWeight="Bold">Number of epochs</Label>
-                    <xctk:IntegerUpDown Name="chooseNumberOfEpochs" Minimum="1" Maximum="200" Increment="1" Value="{Binding NumberOfEpochs}">
-                        <Behaviors:Interaction.Triggers>
-                            <Behaviors:EventTrigger EventName="ValueChanged" SourceObject="{Binding ElementName=chooseNumberOfEpochs}">
-                                <Behaviors:InvokeCommandAction Command="{Binding ChooseNumberOfEpochsCommand}" CommandParameter="{Binding ElementName=chooseNumberOfEpochs}" />
-                            </Behaviors:EventTrigger>
-                        </Behaviors:Interaction.Triggers>
-                    </xctk:IntegerUpDown>
+                    <TextBox Name="EpochsQuantityTextBox" TextWrapping="Wrap" Text="{Binding NumberOfEpochs}" />
                 </StackPanel>
-                <!--Mechanism-->
+                
                 <StackPanel Margin="5">
                     <Label FontWeight="Bold">Mechanism</Label>
-                    
-                    <RadioButton x:Name="Tasks" IsChecked="True" Command="{Binding ChooseMechanismCommand}" Content="{Binding Tasks}" CommandParameter="{Binding Tasks}"/>
+                    </StackPanel>
 
-                    <RadioButton x:Name="Processes" Command="{Binding ChooseMechanismCommand}" Content="threads" CommandParameter="{Binding Processes}"/>
-                </StackPanel>
-                <!--Choose quantity for mechanism-->
                 <StackPanel Margin="5">
-                    <Label FontWeight="Bold">How many</Label>
-                    <xctk:IntegerUpDown Name="chooseQuantityForMechanism" Minimum="1" Maximum="20" Increment="1" Value="{Binding QuantityForMechanism}">
-                        <Behaviors:Interaction.Triggers>
-                            <Behaviors:EventTrigger EventName="ValueChanged" SourceObject="{Binding ElementName=chooseQuantityForMechanism}">
-                                <Behaviors:InvokeCommandAction Command="{Binding ChooseQuantityForMechanismCommand}" CommandParameter="{Binding ElementName=chooseQuantityForMechanism}" />
-                            </Behaviors:EventTrigger>
-                        </Behaviors:Interaction.Triggers>
-                    </xctk:IntegerUpDown>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <ComboBox Name="Mechanism"  SelectedIndex="0" Margin="0,0,5,0">
+                            <ComboBoxItem Content="Threads" />
+                            <ComboBoxItem Content="Tasks" />
+                        </ComboBox>
+                        <TextBox Grid.Column="1"  Margin="5,0,0,0" Name="MechanismQuantityTextBox" TextWrapping="Wrap" Text="{Binding QuantityForMechanism}" />
+                    </Grid>
                 </StackPanel>
-                <!--Choose phases duration-->
+
                 <StackPanel Margin="5">
                     <Label FontWeight="Bold">How long</Label>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition></ColumnDefinition>
-                            <ColumnDefinition Width="10"></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
-                            <ColumnDefinition Width="10"></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
                         </Grid.RowDefinitions>
 
                         <Label Padding="0" Grid.Row="1" Grid.Column="0">Phase 1</Label>
-                        <xctk:IntegerUpDown Grid.Row="1" Grid.Column="2" Name="choosePhaseOneDuration" Minimum="1" Maximum="100" Increment="1" Value="{Binding PhaseOneDuration}">
-                            <Behaviors:Interaction.Triggers>
-                                <Behaviors:EventTrigger EventName="ValueChanged" SourceObject="{Binding ElementName=choosePhaseOneDuration}">
-                                    <Behaviors:InvokeCommandAction Command="{Binding ChoosePhaseOneDurationCommand}" CommandParameter="{Binding ElementName=choosePhaseOneDuration}" />
-                                </Behaviors:EventTrigger>
-                            </Behaviors:Interaction.Triggers>
-                        </xctk:IntegerUpDown>
+                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding PhaseOneDuration}"/>
+                        
                         <Grid Grid.Row="1" Grid.Column="4">
                             <ComboBox Name="phaseOneMeasureUnit" >
                                 <ComboBoxItem IsSelected="True">s</ComboBoxItem>
@@ -88,15 +77,9 @@
                             </ComboBox>
                         </Grid>
 
-
                         <Label Padding="0" Grid.Row="3" Grid.Column="0">Phase 2</Label>
-                        <xctk:IntegerUpDown Grid.Row="3" Grid.Column="2" Name="choosePhaseTwoDuration" Minimum="1" Maximum="100" Increment="1" Value="{Binding PhaseTwoDuration}">
-                            <Behaviors:Interaction.Triggers>
-                                <Behaviors:EventTrigger EventName="ValueChanged" SourceObject="{Binding ElementName=choosePhaseTwoDuration}">
-                                    <Behaviors:InvokeCommandAction Command="{Binding ChoosePhaseTwoDurationCommand}" CommandParameter="{Binding ElementName=choosePhaseTwoDuration}" />
-                                </Behaviors:EventTrigger>
-                            </Behaviors:Interaction.Triggers>
-                        </xctk:IntegerUpDown>
+                        <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding PhaseTwoDuration}"/>
+
                         <Grid Grid.Row="3" Grid.Column="4">
                             <ComboBox Name="phaseTwoMeasureUnit" >
                                 <ComboBoxItem IsSelected="True">s</ComboBoxItem>
@@ -112,25 +95,25 @@
                         </Grid>
                     </Grid>
                 </StackPanel>
-                <!--Progress and results-->
+
                 <StackPanel Margin="5">
-                    <Label Grid.Row="1" Grid.Column="1" FontWeight="Bold">Progress &amp; result</Label>
+                    <Label FontWeight="Bold">Progress &amp; result</Label>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition></ColumnDefinition>
-                            <ColumnDefinition Width="10"></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
                         </Grid.RowDefinitions>
 
                         <Label Padding="0" Grid.Row="1" Grid.Column="0">Best Result</Label>
@@ -146,16 +129,16 @@
                 <StackPanel Margin="5">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition></ColumnDefinition>
-                            <ColumnDefinition Width="10"></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
-                            <RowDefinition Height="20"></RowDefinition>
-                            <RowDefinition Height="5"></RowDefinition>
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="5" />
                         </Grid.RowDefinitions>
 
                         <Button Grid.Row="1" Grid.Column="0" Content="Start" Command="{Binding StartCommand}" Width="auto" />

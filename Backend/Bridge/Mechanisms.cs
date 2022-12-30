@@ -2,7 +2,7 @@
 {
     public static class Mechanisms
     {
-        public const string Tasks = "tasks";
-        public const string Processes = "processes";
+        public const string Tasks = "Tasks";
+        public const string Processes = "Threads";
     }
 }

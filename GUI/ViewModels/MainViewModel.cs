@@ -11,7 +11,11 @@ using System.Linq;
 using System.Collections.Generic;
 using Bridge;
 using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Controls;
 using Calculator;
+using Point = Bridge.Point;
 
 namespace GUI.ViewModels;
 
@@ -49,11 +53,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _stop;
     private PlotModel _plotModel;
     private ObservableCollection<Node> _nodes;
-    private int _currentEpoch = 0;
+    private int _currentEpoch;
 
     public string FileName
     {
-        get { return _fileName; }
+        get => _fileName;
         set
         {
             _fileName = value;
@@ -61,19 +65,9 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public string Mechanism
-    {
-        get { return _mechanism; }
-        set
-        {
-            _mechanism = value;
-            OnPropertyChanged();
-        }
-    }
-
     public int QuantityForMechanism
     {
-        get { return _quantityForMechanism; }
+        get => _quantityForMechanism;
         set
         {
             _quantityForMechanism = value;
@@ -83,7 +77,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public int PhaseOneDuration
     {
-        get { return _phaseOneDuration; }
+        get => _phaseOneDuration;
         set
         {
             _phaseOneDuration = value;
@@ -92,7 +86,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
     public int PhaseTwoDuration
     {
-        get { return _phaseTwoDuration; }
+        get => _phaseTwoDuration;
         set
         {
             _phaseTwoDuration = value;
@@ -102,7 +96,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public char PhaseOneMeasureUnit
     {
-        get { return _phaseOneMeasureUnit; }
+        get => _phaseOneMeasureUnit;
         set
         {
             _phaseOneMeasureUnit = value;
@@ -111,7 +105,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
     public char PhaseTwoMeasureUnit
     {
-        get { return _phaseTwoMeasureUnit; }
+        get => _phaseTwoMeasureUnit;
         set
         {
             _phaseTwoMeasureUnit = value;
@@ -121,7 +115,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public int PhaseOneDurationInMs
     {
-        get { return _phaseOneDurationInMs; }
+        get => _phaseOneDurationInMs;
         set
         {
             _phaseOneDurationInMs = value;
@@ -130,7 +124,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
     public int PhaseTwoDurationInMs
     {
-        get { return _phaseTwoDurationInMs; }
+        get => _phaseTwoDurationInMs;
         set
         {
             _phaseTwoDurationInMs = value;
@@ -140,7 +134,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public int NumberOfEpochs
     {
-        get { return _numberOfEpochs; }
+        get => _numberOfEpochs;
         set
         {
             _numberOfEpochs = value;
@@ -150,7 +144,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public string BestResult
     {
-        get { return _bestResult; }
+        get => _bestResult;
         set
         {
             _bestResult = value;
@@ -159,7 +153,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
     public string SolutionCount
     {
-        get { return _solutionCount; }
+        get => _solutionCount;
         set
         {
             _solutionCount = value;
@@ -168,7 +162,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
     public string CalculationStatus
     {
-        get { return _calculationStatus; }
+        get => _calculationStatus;
         set
         {
             _calculationStatus = value;
@@ -178,7 +172,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public bool Start
     {
-        get { return _start; }
+        get => _start;
         set
         {
             _start = value;
@@ -187,7 +181,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
     public bool Stop
     {
-        get { return _stop; }
+        get => _stop;
         set
         {
             _stop = value;
@@ -197,7 +191,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public int CurrentEpoch
     {
-        get { return _currentEpoch; }
+        get => _currentEpoch;
         set
         {
             _currentEpoch = value;
@@ -234,7 +228,6 @@ public class MainViewModel : INotifyPropertyChanged
 
 	public MainWindow MainWindow { get; }
 	public ICommand OpenFileCommand { get; set; }
-    public ICommand ChooseMechanismCommand { get; set; }
     public ICommand ChooseQuantityForMechanismCommand { get; set; }
     public ICommand ChoosePhaseOneDurationCommand { get; set; }
     public ICommand ChoosePhaseTwoDurationCommand { get; set; }    
@@ -245,10 +238,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand StopCommand { get; set; }
     public ICommand UpdateCommand { get; set; }
     public ICommand ContinueCommand { get; set; }
-    public List<Point> Points { get; private set; }
-    public List<Node> OrderdNodes { get; private set; }
-
-    private IntPtr _hwnd;
+    public List<Point>? Points { get; private set; }
+    public List<Node> OrderedNodes { get; private set; }
 
     #endregion
 
@@ -256,8 +247,8 @@ public class MainViewModel : INotifyPropertyChanged
     public MainViewModel(MainWindow mainWindow)
     {
         MainWindow = mainWindow;
+
         OpenFileCommand = new RelayCommand(OpenFile);
-        ChooseMechanismCommand = new RelayCommand(ChooseMechanism);
         ChooseQuantityForMechanismCommand = new RelayCommand(ChooseQuantityForMechanism);
         ChoosePhaseOneDurationCommand = new RelayCommand(ChoosePhaseOneDuration);
         ChoosePhaseTwoDurationCommand = new RelayCommand(ChoosePhaseTwoDuration);
@@ -269,10 +260,8 @@ public class MainViewModel : INotifyPropertyChanged
         UpdateCommand = new RelayCommand(UpdateCalculations);
 		ContinueCommand = new RelayCommand(ContinueCalculations);
 
-        ReceivedStatusUpdate += new UpdateStatusEventHandler(UpdateStatus);
-        ReceivedBestResult += new UpdateBestResultEventHandler(UpdateBestResult);
-
-        //MessagingHelper messagingHelper = new(Mechanism);
+        ReceivedStatusUpdate += UpdateStatus;
+        ReceivedBestResult += UpdateBestResult;
     }
 
 	private void ContinueCalculations(object obj)
@@ -288,10 +277,10 @@ public class MainViewModel : INotifyPropertyChanged
 			PhaseTwoDurationInMs,
 			QuantityForMechanism,
 			NumberOfEpochs - CurrentEpoch,
-        Points,
-			Mechanism);
+            Points,
+			MainWindow.Mechanism.Text);
 
-		MainWindow.tb_Click(true);
+		MainWindow.EnableWindowClosing();
 	}
 
 	// TODO add : https://learn.microsoft.com/en-us/answers/questions/746124/how-to-disable-and-enable-window-close-button-x-in.html
@@ -309,35 +298,34 @@ public class MainViewModel : INotifyPropertyChanged
     private void UpdateBestResult(Results results)
     {
         Points = results.Points;
-        BestResult = Math.Round(Points.GetTotalDistance(), 2).ToString();
+        BestResult = Math.Round(Points.GetTotalDistance(), 2).ToString(CultureInfo.InvariantCulture);
         DrawGraph(Points);
         UpdateNodesDataGrid(Points);
     }
-    private static int _helperCounter = 0;
-    private static bool endOfRun = false;
+    private static int _helperCounter;
+    private static bool _endOfRun;
     private void UpdateStatus(StatusInfo statusInfo)
     {
-        if (!endOfRun)
+        if (_endOfRun) return;
+
+        _helperCounter++;
+        if (_helperCounter == 2)
         {
-            _helperCounter++;
-            if (_helperCounter == 2)
-            {
-                CurrentEpoch++;
-                _helperCounter = 0;
-            }
+            CurrentEpoch++;
+            _helperCounter = 0;
+        }
 
-            SolutionCount = statusInfo.SolutionCounter.ToString();
+        SolutionCount = statusInfo.SolutionCounter.ToString();
 
-            if (CurrentEpoch >= DefaultValues.NumberOfEpochs)
-            {
-                CalculationStatus = "Ready!";               
-                endOfRun = true;
-				MainWindow.tb_Click(false);
-			}
-            else
-            {
-                CalculationStatus = $"Phase: {statusInfo.Phase}";
-			}
+        if (CurrentEpoch >= DefaultValues.NumberOfEpochs)
+        {
+            CalculationStatus = "Ready!";               
+            _endOfRun = true;
+            MainWindow.DisableWindowClosing();
+        }
+        else
+        {
+            CalculationStatus = $"Phase: {statusInfo.Phase}";
         }
     }
 
@@ -360,14 +348,14 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void ChoosePhaseOneDuration(object obj)
     {
-        var integerUpDown = obj as Xceed.Wpf.Toolkit.IntegerUpDown;
-        PhaseOneDuration = integerUpDown?.Value ?? DefaultValues.PhaseDuration;
+        var integerUpDown = obj as TextBox;
+        PhaseOneDuration = int.TryParse(integerUpDown?.Text, out var result) ? result : 0;
     }
 
     private void ChoosePhaseTwoDuration(object obj)
     {
-        var integerUpDown = obj as Xceed.Wpf.Toolkit.IntegerUpDown;
-        PhaseTwoDuration = integerUpDown?.Value ?? DefaultValues.PhaseDuration;
+        var integerUpDown = obj as TextBox;
+        PhaseTwoDuration = int.TryParse(integerUpDown?.Text, out var result) ? result : 0;
     }
 
     private void StopCalculations(object obj)
@@ -378,14 +366,24 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void StartCalculations(object obj)
     {
-		MessagingHelper.Setup(ReceivedStatusUpdate, ReceivedBestResult, Mechanism);
+		MessagingHelper.Setup(ReceivedStatusUpdate, ReceivedBestResult, MainWindow.Mechanism.Text);
 		CurrentEpoch = 0;
-        endOfRun = false;
+        _endOfRun = false;
         Start = true;
         Stop = false;
 
         PhaseOneDurationInMs = TimeManager.GetDurationInMs(PhaseOneDuration, PhaseOneMeasureUnit);
-        PhaseTwoDurationInMs = TimeManager.GetDurationInMs(PhaseOneDuration, PhaseOneMeasureUnit);
+        PhaseTwoDurationInMs = TimeManager.GetDurationInMs(PhaseTwoDuration, PhaseTwoMeasureUnit);
+
+        if (Points == null)
+        {
+            MessageBox.Show(
+                "Please load the points to analyze!", 
+                "No points were loaded", 
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
 
         MessagingHelper.SendInitialMessageFromClient(
             PhaseOneDurationInMs,
@@ -393,9 +391,9 @@ public class MainViewModel : INotifyPropertyChanged
             QuantityForMechanism,
             NumberOfEpochs,
             Points,
-            Mechanism);
+            MainWindow.Mechanism.Text);
 
-		MainWindow.tb_Click(true);
+		MainWindow.EnableWindowClosing();
 		MessagingHelper.ReceiveMessages();
     }
 
@@ -403,68 +401,57 @@ public class MainViewModel : INotifyPropertyChanged
     {
         if (Start)
         {
-			MainWindow.tb_Click(true);
+			MainWindow.EnableWindowClosing();
 		}
         else
         {
-			MainWindow.tb_Click(false);
+			MainWindow.DisableWindowClosing();
 		}
+
 		MessagingHelper.SendEditMessage(Stop, PhaseOneDurationInMs, PhaseTwoDurationInMs);
     }
 
     private void ChoosePhaseOneMeasureUnit(object obj)
     {
-        var el = obj as System.Windows.Controls.ComboBox;
+        var el = obj as ComboBox;
         PhaseOneMeasureUnit = el?.Text.ElementAt(0) ?? 's';
     }
 
     private void ChoosePhaseTwoMeasureUnit(object obj)
     {
-        var el = obj as System.Windows.Controls.ComboBox;
+        var el = obj as ComboBox;
         PhaseTwoMeasureUnit = el?.Text.ElementAt(0) ?? 's';
     }
 
     private void ChooseQuantityForMechanism(object obj)
     {
-        var el = obj as Xceed.Wpf.Toolkit.IntegerUpDown;
-        QuantityForMechanism = el?.Value ?? DefaultValues.QuantityForMechanism;
-    }
-
-    private void ChooseMechanism(object mechanismName)
-    {
-        Mechanism = (string)mechanismName;
+        var integerUpDown = obj as TextBox;
+        QuantityForMechanism = int.TryParse(integerUpDown?.Text, out var result) ? result : 0;
     }
 
     private void OpenFile(object obj)
     {
         var openFileDialog = new OpenFileDialog();
+        if (openFileDialog.ShowDialog() == false) return;
 
-        if (openFileDialog.ShowDialog() == true)
-        {
-            FileName = openFileDialog.FileName;
-            Points = FileManager.ReadPoints(FileName);
-            OrderdNodes = Points.Select((p, id) => new Node(id, p)).ToList();
-
-            // graph
-            DrawGraph(Points);
-
-            // table
-            UpdateNodesDataGrid(Points);
-        }
+        FileName = openFileDialog.FileName;
+        Points = FileManager.ReadPoints(FileName);
+        OrderedNodes = Points.Select((p, id) => new Node(id, p)).ToList();
+        
+        DrawGraph(Points);
+        UpdateNodesDataGrid(Points);
     }
 
-    private void UpdateNodesDataGrid(List<Point> points)
+    private void UpdateNodesDataGrid(IEnumerable<Point> points)
     {
-        var nodes = GetNodeIdsForPoints(points);
-        Nodes = new ObservableCollection<Node>(nodes);
+        Nodes = new ObservableCollection<Node>(GetNodeIdsForPoints(points));
     }
 
-    private IEnumerable<Node> GetNodeIdsForPoints(List<Point> points)
+    private IEnumerable<Node> GetNodeIdsForPoints(IEnumerable<Point> points)
     {
-        foreach (var point in points)
-        {
-            yield return OrderdNodes.First(n => n.X == point.X && n.Y == point.Y);
-        }
+        return points.Select(point => OrderedNodes.First(thisPoint => 
+            thisPoint.X - point.X == 0 && 
+            thisPoint.Y - point.Y == 0));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
