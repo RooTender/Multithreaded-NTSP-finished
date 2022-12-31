@@ -36,9 +36,9 @@ public class MultiTaskNTSP : ParallelNTSP
         return bestCycle;
     }
 
-    protected override void BarrierSynchronization(CancellationToken token)
+    protected override void BarrierSynchronization(CancellationTokenSource tokenSource, int timeout)
     {
-        Task.WaitAll(_tasks.ToArray(), token);
+        Task.WaitAll(_tasks.ToArray(), timeout, tokenSource.Token);
     }
 
     protected override void Cleanup()

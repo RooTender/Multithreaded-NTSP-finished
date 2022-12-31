@@ -76,7 +76,7 @@ public abstract class ParallelNTSP
 
     protected abstract BestCycle BestCycleParallelMechanism(List<Point> points, CancellationToken token);
 
-    protected abstract void BarrierSynchronization(CancellationToken token);
+    protected abstract void BarrierSynchronization(CancellationTokenSource tokenSource, int timeout);
 
     protected abstract void Cleanup();
 
@@ -95,7 +95,7 @@ public abstract class ParallelNTSP
 
         try
         {
-            BarrierSynchronization(tokenLink.Token);
+            BarrierSynchronization(tokenLink, FirstPhaseTimeout);
         }
         catch (OperationCanceledException)
         {
@@ -139,7 +139,7 @@ public abstract class ParallelNTSP
         cancellationToken.CancelAfter(SecondPhaseTimeout);
         try
         {
-            BarrierSynchronization(tokenLink.Token);
+            BarrierSynchronization(tokenLink, SecondPhaseTimeout);
         }
         catch (OperationCanceledException)
         {

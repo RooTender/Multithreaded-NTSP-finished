@@ -26,20 +26,18 @@ public class MultiThreadNTSP : ParallelNTSP
         return bestCycle;
     }
 
-    protected override void BarrierSynchronization(CancellationToken token)
+    protected override void BarrierSynchronization(CancellationTokenSource tokenSource, int timeout)
     {
-        var timeout = Math.Max(FirstPhaseTimeout, SecondPhaseTimeout);
-
         do
         {
-            ThreadPool.GetMaxThreads(out var maxThreads, out _);
-            ThreadPool.GetAvailableThreads(out var idleThreads, out _);
+            if (ThreadPool.PendingWorkItemCount == 0) return;
 
-            if (CancellationToken.IsCancellationRequested || idleThreads == maxThreads) break;
-
-            Thread.Sleep(TimeSpan.FromMilliseconds(1000));
+            Thread.Sleep(TimeSpan.FromMilliseconds(1));
         } 
         while (timeout-- > 0);
+
+        tokenSource.Cancel();
+        throw new TimeoutException();
     }
 
     protected override void Cleanup()
