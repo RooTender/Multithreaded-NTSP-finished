@@ -1,4 +1,5 @@
-﻿using Bridge;
+﻿using System.Runtime.ExceptionServices;
+using Bridge;
 using RabbitMQ.Client;
 
 namespace Calculator;

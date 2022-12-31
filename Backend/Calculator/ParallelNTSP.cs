@@ -96,7 +96,6 @@ public abstract class ParallelNTSP
         try
         {
             BarrierSynchronization(tokenLink.Token);
-            Cleanup();
         }
         catch (OperationCanceledException)
         {
@@ -107,6 +106,10 @@ public abstract class ParallelNTSP
             }
 
             Console.WriteLine("Phase 1 timeout");
+        }
+        finally
+        {
+            Cleanup();
         }
 
         var results = pmxList
@@ -137,7 +140,6 @@ public abstract class ParallelNTSP
         try
         {
             BarrierSynchronization(tokenLink.Token);
-            Cleanup();
         }
         catch (OperationCanceledException)
         {
@@ -148,6 +150,10 @@ public abstract class ParallelNTSP
             }
 
             Console.WriteLine("Phase 2 timeout");
+        }
+        finally
+        {
+            Cleanup();
         }
 
         var bestResult = workers

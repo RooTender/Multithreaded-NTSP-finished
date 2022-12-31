@@ -2,7 +2,6 @@
 using System.Runtime.InteropServices;
 using System;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Interop;
 
 namespace GUI;

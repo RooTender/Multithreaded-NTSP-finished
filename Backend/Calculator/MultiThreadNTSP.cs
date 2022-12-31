@@ -20,10 +20,10 @@ public class MultiThreadNTSP : ParallelNTSP
 
     protected override BestCycle BestCycleParallelMechanism(List<Point> points, CancellationToken token)
     {
-        var pmx = new BestCycle(points);
-        ThreadPool.QueueUserWorkItem(pmx.Find, token);
+        var bestCycle = new BestCycle(points);
+        ThreadPool.QueueUserWorkItem(bestCycle.Find, token);
 
-        return pmx;
+        return bestCycle;
     }
 
     protected override void BarrierSynchronization(CancellationToken token)

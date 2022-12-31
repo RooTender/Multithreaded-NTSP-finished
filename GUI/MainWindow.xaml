@@ -34,7 +34,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
 
-                        <ComboBox Name="Mechanism"  SelectedIndex="0" Margin="0,0,5,0">
+                        <ComboBox Name="Mechanism" SelectedIndex="0" Margin="0,0,5,0">
                             <ComboBoxItem Content="Threads" />
                             <ComboBoxItem Content="Tasks" />
                         </ComboBox>
@@ -64,34 +64,14 @@
                         <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding PhaseOneDuration}"/>
                         
                         <Grid Grid.Row="1" Grid.Column="4">
-                            <ComboBox Name="phaseOneMeasureUnit" >
-                                <ComboBoxItem IsSelected="True">s</ComboBoxItem>
-                                <ComboBoxItem>m</ComboBoxItem>
-
-                                <Behaviors:Interaction.Triggers>
-                                    <Behaviors:EventTrigger EventName="DropDownClosed" SourceObject="{Binding ElementName=phaseOneMeasureUnit}">
-                                        <Behaviors:InvokeCommandAction Command="{Binding ChoosePhaseOneMeasureUnitCommand}" CommandParameter="{Binding ElementName=phaseOneMeasureUnit}" />
-                                    </Behaviors:EventTrigger>
-                                </Behaviors:Interaction.Triggers>
-
-                            </ComboBox>
+                            <ComboBox Name="PhaseOneMeasureUnit"/>
                         </Grid>
 
                         <Label Padding="0" Grid.Row="3" Grid.Column="0">Phase 2</Label>
                         <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding PhaseTwoDuration}"/>
 
                         <Grid Grid.Row="3" Grid.Column="4">
-                            <ComboBox Name="phaseTwoMeasureUnit" >
-                                <ComboBoxItem IsSelected="True">s</ComboBoxItem>
-                                <ComboBoxItem>m</ComboBoxItem>
-
-                                <Behaviors:Interaction.Triggers>
-                                    <Behaviors:EventTrigger EventName="DropDownClosed" SourceObject="{Binding ElementName=phaseTwoMeasureUnit}">
-                                        <Behaviors:InvokeCommandAction Command="{Binding ChoosePhaseTwoMeasureUnitCommand}" CommandParameter="{Binding ElementName=phaseTwoMeasureUnit}" />
-                                    </Behaviors:EventTrigger>
-                                </Behaviors:Interaction.Triggers>
-
-                            </ComboBox>
+                            <ComboBox Name="PhaseTwoMeasureUnit"/>
                         </Grid>
                     </Grid>
                 </StackPanel>
