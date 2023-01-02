@@ -1,207 +1,71 @@
-﻿using Bridge;
+﻿using System.Collections.Generic;
+using Bridge;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text.Json;
 using System.Text;
-using System;
-using System.Collections.Generic;
 using GUI.ViewModels;
 
 namespace GUI.Utils;
 
 public class MessagingHelper
 {
-    private static IModel _channel;
-    private static string _startQueue;
-	private static string _editQueue;
-	private static string _bestResultQueue;
-	private static string _statusInfoQueue;
+    private readonly IModel _channel;
+    private readonly StatusNotifier _statusNotifier;
+    private readonly NewResultNotifier _newResultNotifier;
 
-	private static string _startQueueThreads;
-	private static string _editQueueThreads;
-	private static string _bestResultQueueThreads;
-	private static string _statusInfoQueueThreads;
-	
-    private static UpdateStatusEventHandler _updateStatusHandler;
-    private static UpdateBestResultEventHandler _updateBestResultEventHandler;
-
-    public MessagingHelper()
+    public MessagingHelper(StatusNotifier statusNotifier, NewResultNotifier newResultNotifier)
     {
+        _statusNotifier = statusNotifier;
+        _newResultNotifier = newResultNotifier;
+        _channel = RabbitQueue.SetupChannel();
     }
 
-    public static void Setup(UpdateStatusEventHandler receivedStatusUpdate, UpdateBestResultEventHandler receivedBestResult, string mechanism)
+    public void StartOrResumeCalculations(CalculationDTO calculationData)
     {
-        // run rabbittmq with docker: docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.11-management
-        var factory = new ConnectionFactory() { HostName = "localhost", Port = 5672 };
-        var connection = factory.CreateConnection();
-        _channel = connection.CreateModel();
-
-        Globals.Mechanism = mechanism;
-
-
-		_startQueue = $"{Mechanisms.Tasks}Start";
-		_editQueue = $"{Mechanisms.Tasks}Edit";
-		_bestResultQueue = $"{Mechanisms.Tasks}BestResult";
-		_statusInfoQueue = $"{Mechanisms.Tasks}StatusInfo";
-
-		_startQueueThreads = $"{Mechanisms.Processes}Start";
-		_editQueueThreads = $"{Mechanisms.Processes}Edit";
-		_bestResultQueueThreads = $"{Mechanisms.Processes}BestResult";
-		_statusInfoQueueThreads = $"{Mechanisms.Processes}StatusInfo";
-
-		_channel.QueueDeclare(
-			queue: _startQueue,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-		_channel.QueueDeclare(
-			queue: _editQueue,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-		_channel.QueueDeclare(
-			queue: _bestResultQueue,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-		_channel.QueueDeclare(
-			queue: _statusInfoQueue,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-
-		// threads
-		_channel.QueueDeclare(
-			queue: _startQueueThreads,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-		_channel.QueueDeclare(
-			queue: _editQueueThreads,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-		_channel.QueueDeclare(
-			queue: _bestResultQueueThreads,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-		_channel.QueueDeclare(
-			queue: _statusInfoQueueThreads,
-			durable: false,
-			exclusive: false,
-			autoDelete: false,
-			arguments: null);
-
-
-
-		// handle status updating
-		_updateStatusHandler = receivedStatusUpdate;
-        _updateBestResultEventHandler = receivedBestResult;
+        _channel.BasicPublish("", RabbitQueue.QueueTypes.Start, null, SerializeMessage(calculationData));
     }
 
-    public static void ReceiveMessages()
+    public void ReceiveMessages()
     {
         var consumer = new EventingBasicConsumer(_channel);
 
-        var startQueue = $"{Globals.Mechanism}Start";
-        var editQueue = $"{Globals.Mechanism}Edit";
-        var statusInfoQueue = $"{Globals.Mechanism}StatusInfo";
-        var bestResultQueue = $"{Globals.Mechanism}BestResult";
+        _channel.BasicConsume(queue: RabbitQueue.QueueTypes.Status, autoAck: true, consumer: consumer);
+        _channel.BasicConsume(queue: RabbitQueue.QueueTypes.UpdateBest, autoAck: true, consumer: consumer);
 
-        _channel.BasicConsume(queue: statusInfoQueue, autoAck: true, consumer: consumer);
-        _channel.BasicConsume(queue: bestResultQueue, autoAck: true, consumer: consumer);
-
-        consumer.Received += (model, ea) =>
+        consumer.Received += (_, sender) =>
+        {
+            var body = sender.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            
+            switch (sender.RoutingKey)
             {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-
-                if (ea.RoutingKey == statusInfoQueue)
+                case RabbitQueue.QueueTypes.Status:
                 {
-                    var results = JsonSerializer.Deserialize<StatusInfo>(message);
-                    Console.WriteLine(" [x] Received {0}", results);
-
-                    if (results != null)
-                    {
-                        _updateStatusHandler?.Invoke(results);
-                    }
+                    var results = JsonSerializer.Deserialize<CalculationStatusDTO>(message);
+                    if (results != null) _statusNotifier(results);
+                    break;
                 }
 
-                if (ea.RoutingKey == bestResultQueue)
+                case RabbitQueue.QueueTypes.UpdateBest:
                 {
-                    var results = JsonSerializer.Deserialize<Results>(message);
-                    Console.WriteLine(" [x] Received {0}", results);
-
-                    if (results != null)
-                    {
-                        _updateBestResultEventHandler?.Invoke(results);
-                    }
+                    var results = JsonSerializer.Deserialize<List<Point>>(message);
+                    if (results != null) _newResultNotifier(results);
+                    break;
                 }
-            };
-    }
-
-    public static void SendInitialMessageFromClient(
-        int phaseOneDurationInMs, 
-        int phaseTwoDurationInMs, 
-        int quantityForMechanism, 
-        int numberOfEpochs, 
-        List<Bridge.Point> points,
-        string mechanism)
-    {
-        MessageFromClient msg = new()
-        {
-            NumberOfTasks = quantityForMechanism,
-            TimePhase1 = phaseOneDurationInMs,
-            TimePhase2 = phaseTwoDurationInMs,
-            NumberOfEpochs = numberOfEpochs,
-            Points = points,
-            Mechanism = mechanism
+            }
         };
-
-        string message = JsonSerializer.Serialize(msg);
-
-        var body = Encoding.UTF8.GetBytes(message);
-
-        _channel.BasicPublish("", Globals.Mechanism + "Start", null, body);
-
-        Console.WriteLine("Published initial message!");
     }
 
-    public static void CloseConnection()
+    public void UpdateCalculationSettings(bool abort, int firstPhaseDuration, int secondPhaseDuration)
     {
-        _channel.Dispose();
+        var message = new CalculationChangesDTO(abort, firstPhaseDuration, secondPhaseDuration);
+        _channel.BasicPublish("", RabbitQueue.QueueTypes.Edit, null, SerializeMessage(message));
     }
 
-    public static void SendEditMessage(bool stop, int phaseOneDurationInMs, int phaseTwoDurationInMs)
+    private static byte[] SerializeMessage(object message)
     {
-        UserChanges userChanges = new()
-        {
-            Stop = stop,
-            NewTimeA = phaseOneDurationInMs,
-            NewTimeB = phaseTwoDurationInMs
-        };
-
-        string userChangesMsg = JsonSerializer.Serialize(userChanges);
-
-        var body = Encoding.UTF8.GetBytes(userChangesMsg);
-
-        _channel.BasicPublish("", Globals.Mechanism + "Edit", null, body);
-
-        Console.WriteLine(" [x] Sent {0}", userChangesMsg);
+        var serializedMessage = JsonSerializer.Serialize(message);
+        return Encoding.UTF8.GetBytes(serializedMessage);
     }
 }

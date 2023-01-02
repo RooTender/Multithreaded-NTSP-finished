@@ -9,14 +9,16 @@
     <Import_RootNamespace>Bridge</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Globals.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)MessageFromClient.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Mechanisms.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DTOs\CalculationDTO.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Mechanism.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RabbitQueue.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Node.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Point.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)PointUtils.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Results.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)StatusInfo.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)UserChanges.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DTOs\CalculationStatusDTO.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DTOs\CalculationChangesDTO.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)DTOs\" />
   </ItemGroup>
 </Project>

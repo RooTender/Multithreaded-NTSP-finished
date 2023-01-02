@@ -16,12 +16,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Calculator;
+using GUI.Commands;
 using Point = Bridge.Point;
 
 namespace GUI.ViewModels;
 
-public delegate void UpdateStatusEventHandler(StatusInfo results);
-public delegate void UpdateBestResultEventHandler(Results results);
+public delegate void StatusNotifier(CalculationStatusDTO results);
+public delegate void NewResultNotifier(List<Point> results);
 
 internal static class DefaultValues
 {
@@ -54,6 +55,7 @@ public class MainViewModel : INotifyPropertyChanged
     private PlotModel _plotModel;
     private ObservableCollection<Node> _nodes;
     private int _currentEpoch;
+    private readonly MessagingHelper _communicator;
 
     public string FileName
     {
@@ -182,8 +184,8 @@ public class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public event UpdateStatusEventHandler ReceivedStatusUpdate;
-    public event UpdateBestResultEventHandler ReceivedBestResult;
+    public event StatusNotifier ReceivedStatusUpdate;
+    public event NewResultNotifier ReceivedBestResult;
 
 	public MainWindow MainWindow { get; }
 	public ICommand OpenFileCommand { get; set; }
@@ -204,7 +206,7 @@ public class MainViewModel : INotifyPropertyChanged
     public MainViewModel(MainWindow mainWindow)
     {
         MainWindow = mainWindow;
-
+        
         SetupUnitMeasurementComboBox(mainWindow.PhaseOneMeasureUnit);
         SetupUnitMeasurementComboBox(mainWindow.PhaseTwoMeasureUnit);
 
@@ -220,6 +222,8 @@ public class MainViewModel : INotifyPropertyChanged
 
         ReceivedStatusUpdate += UpdateStatus;
         ReceivedBestResult += UpdateBestResult;
+
+        _communicator = new MessagingHelper(ReceivedStatusUpdate, ReceivedBestResult);
     }
 
     private static void SetupUnitMeasurementComboBox(Selector comboBox)
@@ -232,32 +236,24 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void StartCalculations(object obj)
     {
-        MessagingHelper.Setup(ReceivedStatusUpdate, ReceivedBestResult, MainWindow.Mechanism.Text);
         CurrentEpoch = 0;
-        _endOfRun = false;
         Start = true;
         Stop = false;
 
-        if (Points == null)
-        {
-            MessageBox.Show(
-                "Please load the points to analyze!", 
-                "No points were loaded", 
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            return;
-        }
+        if (!ValidateDataToSend()) return;
 
-        MessagingHelper.SendInitialMessageFromClient(
+        var dto = new CalculationDTO(
             NormalizeDuration(PhaseOneDuration, MainWindow.PhaseOneMeasureUnit.Text),
             NormalizeDuration(PhaseTwoDuration, MainWindow.PhaseTwoMeasureUnit.Text),
             QuantityForMechanism,
             NumberOfEpochs,
-            Points,
+            Points!,
             MainWindow.Mechanism.Text);
 
+        _communicator.StartOrResumeCalculations(dto);
+        _communicator.ReceiveMessages();
+
         MainWindow.EnableWindowClosing();
-        MessagingHelper.ReceiveMessages();
     }
 
 	private void ContinueCalculations(object obj)
@@ -265,16 +261,37 @@ public class MainViewModel : INotifyPropertyChanged
 		Start = true;
 		Stop = false;
         
-		MessagingHelper.SendInitialMessageFromClient(
+        if (!ValidateDataToSend()) return;
+
+        var dto = new CalculationDTO(
             NormalizeDuration(PhaseOneDuration, MainWindow.PhaseOneMeasureUnit.Text),
             NormalizeDuration(PhaseTwoDuration, MainWindow.PhaseTwoMeasureUnit.Text),
-			QuantityForMechanism,
-			NumberOfEpochs - CurrentEpoch,
-            Points,
-			MainWindow.Mechanism.Text);
+            QuantityForMechanism,
+            NumberOfEpochs - CurrentEpoch,
+            Points!,
+            MainWindow.Mechanism.Text);
+
+        _communicator.StartOrResumeCalculations(dto);
 
 		MainWindow.EnableWindowClosing();
 	}
+
+    private bool ValidateDataToSend()
+    {
+        // ReSharper disable once InvertIf
+        if (Points == null)
+        {
+            MessageBox.Show(
+                "Please load the points to analyze!", 
+                "No points were loaded", 
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
+            return false;
+        }
+
+        return true;
+    }
 
     private void EditCalculations()
     {
@@ -287,7 +304,7 @@ public class MainViewModel : INotifyPropertyChanged
             MainWindow.DisableWindowClosing();
         }
 
-        MessagingHelper.SendEditMessage(Stop, 
+        _communicator.UpdateCalculationSettings(Stop, 
             NormalizeDuration(PhaseOneDuration, MainWindow.PhaseOneMeasureUnit.Text),
             NormalizeDuration(PhaseTwoDuration, MainWindow.PhaseTwoMeasureUnit.Text));
     }
@@ -301,8 +318,7 @@ public class MainViewModel : INotifyPropertyChanged
             _ => duration
         };
     }
-
-    // TODO add : https://learn.microsoft.com/en-us/answers/questions/746124/how-to-disable-and-enable-window-close-button-x-in.html
+    
 	private void UpdateCalculations(object obj)
     {
         EditCalculations();
@@ -314,55 +330,41 @@ public class MainViewModel : INotifyPropertyChanged
         PhaseTwoDuration = int.TryParse(integerUpDown?.Text, out var result) ? result : 0;
     }
 
-    private void UpdateBestResult(Results results)
+    private void UpdateBestResult(List<Point> results)
     {
-        Points = results.Points;
+        Points = results;
         BestResult = Math.Round(Points.GetTotalDistance(), 2).ToString(CultureInfo.InvariantCulture);
         DrawGraph(Points);
         UpdateNodesDataGrid(Points);
     }
-    private static int _helperCounter;
-    private static bool _endOfRun;
-    private void UpdateStatus(StatusInfo statusInfo)
+
+    private void UpdateStatus(CalculationStatusDTO calculationStatusDTO)
     {
-        if (_endOfRun) return;
+        CurrentEpoch = calculationStatusDTO.Epoch;
+        SolutionCount = calculationStatusDTO.SolutionNo.ToString();
 
-        _helperCounter++;
-        if (_helperCounter == 2)
+        if (calculationStatusDTO.Epoch == NumberOfEpochs)
         {
-            CurrentEpoch++;
-            _helperCounter = 0;
-        }
-
-        SolutionCount = statusInfo.SolutionCounter.ToString();
-
-        if (CurrentEpoch >= DefaultValues.NumberOfEpochs)
-        {
-            CalculationStatus = "Ready!";               
-            _endOfRun = true;
+            CalculationStatus = "Ready!";
             MainWindow.DisableWindowClosing();
+
+            return;
         }
-        else
-        {
-            CalculationStatus = $"Phase: {statusInfo.Phase}";
-        }
+
+        CalculationStatus = $"Phase: {calculationStatusDTO.Phase}";
     }
 
-    private void DrawGraph(List<Point> points)
+    private void DrawGraph(ICollection<Point> points)
     {
-        var plotModel = new PlotModel { Title = "Actual solution graph" };
-        var series = new LineSeries { MarkerType = MarkerType.Circle };
-        points = AddFirstPointToTheEnd(points);
-        var dataPoints = points.Select(p => new DataPoint(p.X,p.Y));
-        series.Points.AddRange(dataPoints);
+        var plotModel = new PlotModel { Title = "Graph" };
+        var series = new LineSeries { MarkerType = MarkerType.Circle, Color = OxyColors.Black };
+        
+        points.Add(points.First());
+        var plotPoints = points.Select(point => new DataPoint(point.X, point.Y));
+        series.Points.AddRange(plotPoints);
+
         plotModel.Series.Add(series);
         PlotModel = plotModel;
-    }
-
-    private List<Point> AddFirstPointToTheEnd(List<Point> points)
-    {
-        points.Add(points[0]);
-        return points;
     }
 
     private void ChoosePhaseOneDuration(object obj)

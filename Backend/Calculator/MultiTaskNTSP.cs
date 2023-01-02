@@ -1,5 +1,4 @@
-﻿using System.Runtime.ExceptionServices;
-using Bridge;
+﻿using Bridge;
 using RabbitMQ.Client;
 
 namespace Calculator;
@@ -8,8 +7,8 @@ public class MultiTaskNTSP : ParallelNTSP
 {
     private readonly List<Task> _tasks;
     
-    public MultiTaskNTSP(int phaseCycles, int firstPhaseTimeout, int secondPhaseTimeout, int maxCycles, IModel channel) 
-        : base(phaseCycles, firstPhaseTimeout, secondPhaseTimeout, maxCycles, channel)
+    public MultiTaskNTSP(CalculationDTO calculationData, IModel channel) 
+        : base(calculationData, channel)
     {
         _tasks = new List<Task>();
     }

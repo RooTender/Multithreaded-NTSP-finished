@@ -4,155 +4,60 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
+using RQueue = Bridge.RabbitQueue.QueueTypes;
 
-var factory = new ConnectionFactory() { HostName = "localhost", Port = 5672 };
-
-using var connection = factory.CreateConnection();
-
-using var channel = connection.CreateModel();
-
-var startQueue = $"{Mechanisms.Tasks}Start";
-var editQueue = $"{Mechanisms.Tasks}Edit";
-var bestResultQueue = $"{Mechanisms.Tasks}BestResult";
-var statusInfoQueue = $"{Mechanisms.Tasks}StatusInfo";
-
-var startQueueThreads = $"{Mechanisms.Processes}Start";
-var editQueueThreads = $"{Mechanisms.Processes}Edit";
-var bestResultQueueThreads = $"{Mechanisms.Processes}BestResult";
-var statusInfoQueueThreads = $"{Mechanisms.Processes}StatusInfo";
-
-channel.QueueDeclare(
-    queue: startQueue,
-    durable: false,
-    exclusive: false,
-    autoDelete: false,
-    arguments: null);
-
-channel.QueueDeclare(
-    queue: editQueue,
-    durable: false,
-    exclusive: false,
-    autoDelete: false,
-    arguments: null);
-
-channel.QueueDeclare(
-    queue: bestResultQueue,
-    durable: false,
-    exclusive: false,
-    autoDelete: false,
-    arguments: null);
-
-channel.QueueDeclare(
-    queue: statusInfoQueue,
-    durable: false,
-    exclusive: false,
-    autoDelete: false,
-    arguments: null);
-
-
-// threads
-channel.QueueDeclare(
-	queue: startQueueThreads,
-	durable: false,
-	exclusive: false,
-	autoDelete: false,
-	arguments: null);
-
-channel.QueueDeclare(
-	queue: editQueueThreads,
-	durable: false,
-	exclusive: false,
-	autoDelete: false,
-	arguments: null);
-
-channel.QueueDeclare(
-	queue: bestResultQueueThreads,
-	durable: false,
-	exclusive: false,
-	autoDelete: false,
-	arguments: null);
-
-channel.QueueDeclare(
-	queue: statusInfoQueueThreads,
-	durable: false,
-	exclusive: false,
-	autoDelete: false,
-	arguments: null);
-
-
+var channel = RabbitQueue.SetupChannel();
 var consumer = new EventingBasicConsumer(channel);
+ParallelNTSP? calculations = null;
 
-channel.BasicConsume(queue: startQueue, autoAck: true, consumer: consumer);
-channel.BasicConsume(queue: editQueue, autoAck: true, consumer: consumer);
-channel.BasicConsume(queue: startQueueThreads, autoAck: true, consumer: consumer);
-channel.BasicConsume(queue: editQueueThreads, autoAck: true, consumer: consumer);
-
-MultiTaskNTSP? multiTaskNTSP = null;
-MultiThreadNTSP? multiThreadNTSP = null;
-
-consumer.Received += (model, ea) =>
-{
-    var body = ea.Body.ToArray();
-    var message = Encoding.UTF8.GetString(body);
-
-    if(ea.RoutingKey == startQueue) {
-        Task.Run(() => ProcessTask(message));
-    }
-
-    if (ea.RoutingKey == editQueue)
-    {
-        var msgUserChanges = JsonSerializer.Deserialize<UserChanges>(message);
-        if(multiTaskNTSP != null)
-        {
-            multiTaskNTSP.FirstPhaseTimeout = msgUserChanges.NewTimeA;
-            multiTaskNTSP.SecondPhaseTimeout = msgUserChanges.NewTimeB;
-
-            if(msgUserChanges.Stop) 
-            {
-                multiTaskNTSP.CancellationToken.Cancel();
-            }
-        }
-    }
-
-    // threads
-	if (ea.RoutingKey == startQueueThreads)
-	{
-		Task.Run(() => ProcessThread(message));
-	}
-
-	if (ea.RoutingKey == editQueueThreads)
-	{
-		var msgUserChanges = JsonSerializer.Deserialize<UserChanges>(message);
-		if (multiThreadNTSP != null)
-		{
-			multiThreadNTSP.FirstPhaseTimeout = msgUserChanges.NewTimeA;
-			multiThreadNTSP.SecondPhaseTimeout = msgUserChanges.NewTimeB;
-
-			if (msgUserChanges.Stop)
-			{
-				multiThreadNTSP.CancellationToken.Cancel();
-			}
-		}
-	}
-};
-
-void ProcessTask(string message)
-{
-    var msgFromClient = JsonSerializer.Deserialize<MessageFromClient>(message) ?? throw new ArgumentNullException();
-    Globals.Mechanism = msgFromClient.Mechanism;
-    multiTaskNTSP = new MultiTaskNTSP(msgFromClient.NumberOfTasks, msgFromClient.TimePhase1, msgFromClient.TimePhase2,
-        msgFromClient.NumberOfEpochs, channel);
-    multiTaskNTSP.Run(msgFromClient.Points);
+foreach (var queueName in new[] { RQueue.Start, RQueue.Edit,  RQueue.Status, RQueue.UpdateBest })
+{                               
+    channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 }
 
-void ProcessThread(string message)
+consumer.Received += (_, sender) =>
 {
-	var msgFromClient = JsonSerializer.Deserialize<MessageFromClient>(message) ?? throw new ArgumentNullException();
-	Globals.Mechanism = msgFromClient.Mechanism;
-	multiThreadNTSP = new MultiThreadNTSP(msgFromClient.NumberOfTasks, msgFromClient.TimePhase1, msgFromClient.TimePhase2,
-		msgFromClient.NumberOfEpochs, channel);
-	multiThreadNTSP.Run(msgFromClient.Points);
+    var body = sender.Body.ToArray();
+    var message = Encoding.UTF8.GetString(body);
+
+    switch (sender.RoutingKey)
+    {
+        case RQueue.Start:
+            StartCalculations(message);
+            break;
+
+        case RQueue.Edit:
+            UpdateCalculations(message);
+            break;
+    }
+};
+
+void StartCalculations(string encodedMessage)
+{
+    var message = JsonSerializer.Deserialize<CalculationDTO>(encodedMessage);
+    if (message == null) return;
+
+    calculations = message.Mechanism switch
+    {
+        Mechanism.Type.Tasks => new MultiTaskNTSP(message, channel),
+        Mechanism.Type.Threads => new MultiThreadNTSP(message, channel),
+        _ => calculations
+    };
+
+    Task.Run(() => calculations?.Run(message.Points));
+}
+
+void UpdateCalculations(string encodedMessage)
+{
+    var message = JsonSerializer.Deserialize<CalculationChangesDTO>(encodedMessage);
+    if (message == null || calculations == null) return;
+
+    if (message.AbortCalculations)
+    {
+        calculations.Abort();
+    }
+
+    calculations.UpdatePhasesTimeouts(message.FirstPhaseTimeout, message.SecondPhaseTimeout);
 }
 
 Console.ReadKey();
-

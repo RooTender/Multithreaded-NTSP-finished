@@ -6,7 +6,7 @@ namespace Calculator
     {
         private List<Node<Point>> _bestResult;
         
-        public BestCycle(List<Point> bestResult)
+        public BestCycle(IReadOnlyList<Point> bestResult)
         {
             _bestResult = PointsToNodeCycle(bestResult);
         }
@@ -50,7 +50,7 @@ namespace Calculator
                             _bestResult = variationB;
                         }
 
-                        Globals.Counter++;
+                        ++ParallelNTSP.CalculatedSolutions;
                     }
                 }
             }

@@ -2,74 +2,70 @@
 using System.Text;
 using System.Text.Json;
 using Bridge;
+using System.Data;
 
 namespace Calculator;
 
 public abstract class ParallelNTSP
 {
+    private readonly CancellationTokenSource _cancellationToken;
     private readonly IModel _channel;
-    private readonly int _phaseCycles;
-    private readonly int _maxCycles;
-    private List<Point> _bestRoute;
 
-    protected ParallelNTSP(int phaseCycles, int firstPhaseTimeout, int secondPhaseTimeout, int maxCycles, IModel channel)
+    private readonly int _mechanismsEngaged;
+    private readonly int _maxEpochs;
+    private double _bestDistance;
+    private int _currentEpoch;
+    private int _firstPhaseTimeout;
+    private int _secondPhaseTimeout;
+
+    public static int CalculatedSolutions;
+
+    protected ParallelNTSP(CalculationDTO calculationData, IModel channel)
     {
-        _phaseCycles = phaseCycles;
-        _maxCycles = maxCycles;
+        _cancellationToken = new CancellationTokenSource();
         _channel = channel;
-        _bestRoute = new List<Point>();
 
-        FirstPhaseTimeout = firstPhaseTimeout;
-        SecondPhaseTimeout = secondPhaseTimeout;
+        _mechanismsEngaged = calculationData.MechanismsEngaged;
+        _maxEpochs = calculationData.NumberOfEpochs;
+        _bestDistance = calculationData.Points.GetTotalDistance();
+        _firstPhaseTimeout = calculationData.PhaseOneDurationInMs;
+        _secondPhaseTimeout = calculationData.PhaseTwoDurationInMs;
+        _currentEpoch = 0;
+
+        CalculatedSolutions = 0;
     }
 
-    public CancellationTokenSource CancellationToken = new();
-    public int FirstPhaseTimeout;
-    public int SecondPhaseTimeout;
-    public List<Point> BestRoute
+    public void Run(List<Point> route)
     {
-        get => _bestRoute;
-        set
-        {
-            Console.WriteLine($"New best route found: {value.GetTotalDistance()}");
-                
-            var bestResultMsg = JsonSerializer.Serialize(new Results { Points = value });
-            var bestResultBody = Encoding.UTF8.GetBytes(bestResultMsg);
-
-            _channel.BasicPublish("", Globals.Mechanism + "BestResult", null, bestResultBody);
-            _bestRoute = value;
-        }
-    }
-
-    public List<Point> Run(List<Point> points)
-    {
-        BestRoute = new List<Point>(points);
+        CalculatedSolutions = 0;
+        SendUpdatedDistance(route);
 
         try
         {
-            var routes = ParallelFirstPhase(points);
-            SendStatusMessage(1);
-
-            var secondPhaseSolutions = ParallelSecondPhase(routes);
-            SendStatusMessage(2);
-
-            for (var i = 0; i < _maxCycles; i++)
+            while (_currentEpoch++ <= _maxEpochs)
             {
-                routes = ParallelFirstPhase(secondPhaseSolutions);
+                var routes = ParallelFirstPhase(route);
                 SendStatusMessage(1);
 
-                secondPhaseSolutions = ParallelSecondPhase(routes);
+                route = ParallelSecondPhase(routes);
                 SendStatusMessage(2);
-
-                Console.WriteLine("Best distance: " + secondPhaseSolutions.GetTotalDistance());
             }
         }
         catch (OperationCanceledException)
         {
             Console.WriteLine("Calculations were interrupted!");
         }
+    }
 
-        return BestRoute;
+    public void Abort()
+    {
+        _cancellationToken.Cancel();
+    }
+
+    public void UpdatePhasesTimeouts(int firstPhase, int secondPhase)
+    {
+        _firstPhaseTimeout = firstPhase;
+        _secondPhaseTimeout = secondPhase;
     }
 
     protected abstract PMX PMXParallelMechanism(List<Point> points, CancellationToken token);
@@ -83,23 +79,23 @@ public abstract class ParallelNTSP
     private List<List<Point>> ParallelFirstPhase(List<Point> points)
     {
         using var cancellationToken = new CancellationTokenSource();
-        using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken.Token, cancellationToken.Token);
+        using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken.Token, cancellationToken.Token);
 
-        var pmxList = new List<PMX>(_phaseCycles);
-        for (var i = 0; i < _phaseCycles; i++)
+        var pmxList = new List<PMX>(_mechanismsEngaged);
+        for (var i = 0; i < _mechanismsEngaged; i++)
         {
             pmxList.Add(PMXParallelMechanism(points, tokenLink.Token));
         }
 
-        cancellationToken.CancelAfter(FirstPhaseTimeout);
+        cancellationToken.CancelAfter(_firstPhaseTimeout);
 
         try
         {
-            BarrierSynchronization(tokenLink, FirstPhaseTimeout);
+            BarrierSynchronization(tokenLink, _firstPhaseTimeout);
         }
         catch (OperationCanceledException)
         {
-            if (CancellationToken.IsCancellationRequested)
+            if (_cancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Phase 1 was canceled");
                 throw;
@@ -115,12 +111,8 @@ public abstract class ParallelNTSP
         var results = pmxList
             .Select(x => x.BestGeneration())
             .OrderBy(x => x.GetTotalDistance()).ToList();
-
-        var bestResult = results.First();
-        if (bestResult.GetTotalDistance() < BestRoute.GetTotalDistance())
-        {
-            BestRoute = bestResult;
-        }
+        
+        UpdateBestDistanceValue(results.First());
 
         return results;
     }
@@ -128,22 +120,23 @@ public abstract class ParallelNTSP
     private List<Point> ParallelSecondPhase(IReadOnlyList<List<Point>> points)
     {
         using var cancellationToken = new CancellationTokenSource();
-        using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken.Token, cancellationToken.Token);
+        using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken.Token, cancellationToken.Token);
         
-        var workers = new List<BestCycle>(_phaseCycles);
-        for (var i = 0; i < _phaseCycles; i++)
+        var workers = new List<BestCycle>(_mechanismsEngaged);
+        for (var i = 0; i < _mechanismsEngaged; i++)
         {
             workers.Add(BestCycleParallelMechanism(points[i], tokenLink.Token));
         }
 
-        cancellationToken.CancelAfter(SecondPhaseTimeout);
+        cancellationToken.CancelAfter(_secondPhaseTimeout);
+
         try
         {
-            BarrierSynchronization(tokenLink, SecondPhaseTimeout);
+            BarrierSynchronization(tokenLink, _secondPhaseTimeout);
         }
         catch (OperationCanceledException)
         {
-            if (CancellationToken.IsCancellationRequested)
+            if (_cancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Phase 2 was canceled");
                 throw;
@@ -161,26 +154,40 @@ public abstract class ParallelNTSP
             .OrderBy(x => x.GetTotalDistance())
             .First();
 
-        if (BestRoute.GetTotalDistance() > bestResult.GetTotalDistance())
-        {
-            BestRoute = bestResult;
-        }
+        UpdateBestDistanceValue(bestResult);
 
         return bestResult;
     }
 
-    private void SendStatusMessage(int phase)
+    private void UpdateBestDistanceValue(List<Point> route)
     {
-        Console.WriteLine($"Status info: \n\tphase: {phase} \n\tsolution counter: {Globals.Counter}");
+        var distance = route.GetTotalDistance();
 
-        var statusMessage = JsonSerializer.Serialize(new StatusInfo { Phase = phase, SolutionCounter = Globals.Counter });
-        var body = Encoding.UTF8.GetBytes(statusMessage);
-
-        _channel.BasicPublish("", Globals.Mechanism + "StatusInfo", null, body);
+        // ReSharper disable once InvertIf
+        if (distance < _bestDistance)
+        {
+            _bestDistance = distance;
+            SendUpdatedDistance(route);
+        }
     }
 
-    internal class Results
+    private void SendUpdatedDistance(IEnumerable<Point> route)
     {
-        public List<Point> Points { get; set; } = new();
+        Console.WriteLine("New best route found!");
+        
+        var message = JsonSerializer.Serialize(new List<Point>(route));
+        var body = Encoding.UTF8.GetBytes(message);
+
+        _channel.BasicPublish("", RabbitQueue.QueueTypes.UpdateBest, null, body);
+    }
+
+    private void SendStatusMessage(int phase)
+    {
+        Console.WriteLine(_currentEpoch == _maxEpochs ? "Done!" : $"Phase: {phase}, Solution: {CalculatedSolutions}");
+
+        var message = JsonSerializer.Serialize(new CalculationStatusDTO(_currentEpoch, phase, CalculatedSolutions));
+        var body = Encoding.UTF8.GetBytes(message);
+
+        _channel.BasicPublish("", RabbitQueue.QueueTypes.Status, null, body);
     }
 }

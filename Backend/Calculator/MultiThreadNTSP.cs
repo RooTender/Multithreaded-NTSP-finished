@@ -5,8 +5,8 @@ namespace Calculator;
 
 public class MultiThreadNTSP : ParallelNTSP
 {
-    public MultiThreadNTSP(int phaseCycles, int firstPhaseTimeout, int secondPhaseTimeout, int maxCycles, IModel channel)
-        : base(phaseCycles, firstPhaseTimeout, secondPhaseTimeout, maxCycles, channel)
+    public MultiThreadNTSP(CalculationDTO calculationData, IModel channel) 
+        : base(calculationData, channel)
     {
     }
 

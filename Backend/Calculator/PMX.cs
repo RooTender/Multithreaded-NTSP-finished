@@ -6,8 +6,7 @@ namespace Calculator
     {
         private List<int> _bestFirstParentIndexes;
         private List<int> _bestSecondParentIndexes;
-
-        private List<Point> _points;
+        private readonly List<Point> _points;
         
         private IReadOnlyList<int> _bestResult;
 
@@ -18,15 +17,6 @@ namespace Calculator
 
             _bestFirstParentIndexes = GetPermutation(points.Count);
             _bestSecondParentIndexes = GetPermutation(points.Count);
-        }
-
-        public PMX(List<Point> firstParent, IEnumerable<Point> secondParent)
-        {
-			_points = firstParent;
-			_bestFirstParentIndexes = firstParent.Select(i => _points.IndexOf(i)).ToList();
-			_bestSecondParentIndexes = secondParent.Select(i => _points.IndexOf(i)).ToList();
-
-			_bestResult = Enumerable.Range(0, _points.Count).ToList();
         }
 
 		public List<Point> BestGeneration()
@@ -61,16 +51,7 @@ namespace Calculator
 			_bestFirstParentIndexes = currentFirstParentIndexes;
 			_bestSecondParentIndexes = currentSecondParentIndexes;
 
-			Globals.Counter++;
-		}
-
-		public void NextGenerationWithParameters(List<Point> firstParent, List<Point> secondParent)
-		{
-			_points = firstParent;
-			_bestFirstParentIndexes = firstParent.Select(i => _points.IndexOf(i)).ToList();
-			_bestSecondParentIndexes = secondParent.Select(i => _points.IndexOf(i)).ToList();
-
-			NextGeneration();
+            ++ParallelNTSP.CalculatedSolutions;
 		}
 
         private static IEnumerable<int> NextGenerationChild(
