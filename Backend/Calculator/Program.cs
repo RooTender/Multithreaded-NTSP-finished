@@ -10,7 +10,7 @@ var channel = RabbitQueue.SetupChannel();
 var consumer = new EventingBasicConsumer(channel);
 ParallelNTSP? calculations = null;
 
-foreach (var queueName in new[] { RQueue.Start, RQueue.Edit,  RQueue.Status, RQueue.UpdateBest })
+foreach (var queueName in new[] { RQueue.Start, RQueue.Stop,  RQueue.Status, RQueue.UpdateBest })
 {                               
     channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 }
@@ -26,8 +26,8 @@ consumer.Received += (_, sender) =>
             StartCalculations(message);
             break;
 
-        case RQueue.Edit:
-            UpdateCalculations(message);
+        case RQueue.Stop:
+            AbortCalculations();
             break;
     }
 };
@@ -47,17 +47,9 @@ void StartCalculations(string encodedMessage)
     Task.Run(() => calculations?.Run(message.Points));
 }
 
-void UpdateCalculations(string encodedMessage)
+void AbortCalculations()
 {
-    var message = JsonSerializer.Deserialize<CalculationChangesDTO>(encodedMessage);
-    if (message == null || calculations == null) return;
-
-    if (message.AbortCalculations)
-    {
-        calculations.Abort();
-    }
-
-    calculations.UpdatePhasesTimeouts(message.FirstPhaseTimeout, message.SecondPhaseTimeout);
+    calculations?.Abort();
 }
 
 Console.ReadKey();

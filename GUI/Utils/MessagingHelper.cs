@@ -19,14 +19,21 @@ public class MessagingHelper
         _statusNotifier = statusNotifier;
         _newResultNotifier = newResultNotifier;
         _channel = RabbitQueue.SetupChannel();
+
+        ReactToIncomingMessages();
     }
 
-    public void StartOrResumeCalculations(CalculationDTO calculationData)
+    public void StartCalculations(CalculationDTO calculationData)
     {
         _channel.BasicPublish("", RabbitQueue.QueueTypes.Start, null, SerializeMessage(calculationData));
     }
 
-    public void ReceiveMessages()
+    public void AbortCalculations()
+    {
+        _channel.BasicPublish("", RabbitQueue.QueueTypes.Stop, null, null);
+    }
+
+    private void ReactToIncomingMessages()
     {
         var consumer = new EventingBasicConsumer(_channel);
 
@@ -55,12 +62,6 @@ public class MessagingHelper
                 }
             }
         };
-    }
-
-    public void UpdateCalculationSettings(bool abort, int firstPhaseDuration, int secondPhaseDuration)
-    {
-        var message = new CalculationChangesDTO(abort, firstPhaseDuration, secondPhaseDuration);
-        _channel.BasicPublish("", RabbitQueue.QueueTypes.Edit, null, SerializeMessage(message));
     }
 
     private static byte[] SerializeMessage(object message)

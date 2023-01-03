@@ -5,30 +5,40 @@ namespace Bridge;
 public class CalculationDTO
 {
     public CalculationDTO(
-        int phaseOneDurationInMs,
-        int phaseTwoDurationInMs,
+        int phaseOneDuration,
+        int phaseTwoDuration,
+        string mechanism,
         int mechanismsEngaged,
+        int initialEpoch,
         int numberOfEpochs,
         List<Point> points,
-        string mechanism)
+        int calculatedSolutions
+        )
     {
-        PhaseOneDurationInMs = phaseOneDurationInMs;
-        PhaseTwoDurationInMs = phaseTwoDurationInMs;
+        PhaseOneDuration = phaseOneDuration;
+        PhaseTwoDuration = phaseTwoDuration;
+        Mechanism = mechanism;
         MechanismsEngaged = mechanismsEngaged;
+        InitialEpoch = initialEpoch;
         NumberOfEpochs = numberOfEpochs;
         Points = points;
-        Mechanism = mechanism;
+        CalculatedSolutions = calculatedSolutions;
     }
 
-    public int PhaseOneDurationInMs { get; }
+    public int PhaseOneDuration { get; }
 
-    public int PhaseTwoDurationInMs { get; }
+    public int PhaseTwoDuration { get; }
+
+    public string Mechanism { get; }
 
     public int MechanismsEngaged { get; }
+
+    public int InitialEpoch { get; }
 
     public int NumberOfEpochs { get; }
 
     public List<Point> Points { get; }
 
-    public string Mechanism { get; }
+    public int CalculatedSolutions { get; }
+
 }

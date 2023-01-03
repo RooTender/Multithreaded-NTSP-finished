@@ -28,16 +28,15 @@ public abstract class ParallelNTSP
         _mechanismsEngaged = calculationData.MechanismsEngaged;
         _maxEpochs = calculationData.NumberOfEpochs;
         _bestDistance = calculationData.Points.GetTotalDistance();
-        _firstPhaseTimeout = calculationData.PhaseOneDurationInMs;
-        _secondPhaseTimeout = calculationData.PhaseTwoDurationInMs;
-        _currentEpoch = 0;
+        _firstPhaseTimeout = calculationData.PhaseOneDuration;
+        _secondPhaseTimeout = calculationData.PhaseTwoDuration;
+        _currentEpoch = calculationData.InitialEpoch;
 
-        CalculatedSolutions = 0;
+        CalculatedSolutions = calculationData.CalculatedSolutions;
     }
 
     public void Run(List<Point> route)
     {
-        CalculatedSolutions = 0;
         SendUpdatedDistance(route);
 
         try
@@ -70,7 +69,7 @@ public abstract class ParallelNTSP
 
     protected abstract PMX PMXParallelMechanism(List<Point> points, CancellationToken token);
 
-    protected abstract BestCycle BestCycleParallelMechanism(List<Point> points, CancellationToken token);
+    protected abstract ThreeOpt BestCycleParallelMechanism(List<Point> points, CancellationToken token);
 
     protected abstract void BarrierSynchronization(CancellationTokenSource tokenSource, int timeout);
 
@@ -91,7 +90,9 @@ public abstract class ParallelNTSP
 
         try
         {
+            _cancellationToken.Token.ThrowIfCancellationRequested();
             BarrierSynchronization(tokenLink, _firstPhaseTimeout);
+            _cancellationToken.Token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {
@@ -101,6 +102,10 @@ public abstract class ParallelNTSP
                 throw;
             }
 
+            Console.WriteLine("Phase 1 timeout");
+        }
+        catch (TimeoutException)
+        {
             Console.WriteLine("Phase 1 timeout");
         }
         finally
@@ -122,7 +127,7 @@ public abstract class ParallelNTSP
         using var cancellationToken = new CancellationTokenSource();
         using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken.Token, cancellationToken.Token);
         
-        var workers = new List<BestCycle>(_mechanismsEngaged);
+        var workers = new List<ThreeOpt>(_mechanismsEngaged);
         for (var i = 0; i < _mechanismsEngaged; i++)
         {
             workers.Add(BestCycleParallelMechanism(points[i], tokenLink.Token));
@@ -132,7 +137,9 @@ public abstract class ParallelNTSP
 
         try
         {
+            _cancellationToken.Token.ThrowIfCancellationRequested();
             BarrierSynchronization(tokenLink, _secondPhaseTimeout);
+            _cancellationToken.Token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {
@@ -142,6 +149,10 @@ public abstract class ParallelNTSP
                 throw;
             }
 
+            Console.WriteLine("Phase 2 timeout");
+        }
+        catch (TimeoutException)
+        {
             Console.WriteLine("Phase 2 timeout");
         }
         finally

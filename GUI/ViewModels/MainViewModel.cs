@@ -26,9 +26,9 @@ public delegate void NewResultNotifier(List<Point> results);
 
 internal static class DefaultValues
 {
-    internal static readonly int PhaseDuration = 2;
-    internal static readonly int QuantityForMechanism = 8;
-    internal static readonly int NumberOfEpochs = 50;
+    internal const int PhaseDuration = 2;
+    internal const int QuantityForMechanism = 8;
+    internal const int NumberOfEpochs = 50;
 }
 
 internal static class MeasurementUnits
@@ -50,8 +50,6 @@ public class MainViewModel : INotifyPropertyChanged
     private string _bestResult;
     private string _solutionCount;
     private string _calculationStatus;
-    private bool _start;
-    private bool _stop;
     private PlotModel _plotModel;
     private ObservableCollection<Node> _nodes;
     private int _currentEpoch;
@@ -134,25 +132,6 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool Start
-    {
-        get => _start;
-        set
-        {
-            _start = value;
-            OnPropertyChanged();
-        }
-    }
-    public bool Stop
-    {
-        get => _stop;
-        set
-        {
-            _stop = value;
-            OnPropertyChanged();
-        }
-    }
-
     public int CurrentEpoch
     {
         get => _currentEpoch;
@@ -193,10 +172,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ChoosePhaseOneDurationCommand { get; set; }
     public ICommand ChoosePhaseTwoDurationCommand { get; set; }
     public ICommand ChooseNumberOfEpochsCommand { get; set; }
-    public ICommand StartCommand { get; set; }
-    public ICommand StopCommand { get; set; }
-    public ICommand UpdateCommand { get; set; }
-    public ICommand ContinueCommand { get; set; }
+    public ICommand StartPauseCommand { get; set; }
+    public ICommand AbortCommand { get; set; }
     public List<Point>? Points { get; private set; }
     public List<Node> OrderedNodes { get; private set; }
 
@@ -206,19 +183,17 @@ public class MainViewModel : INotifyPropertyChanged
     public MainViewModel(MainWindow mainWindow)
     {
         MainWindow = mainWindow;
-        
-        SetupUnitMeasurementComboBox(mainWindow.PhaseOneMeasureUnit);
-        SetupUnitMeasurementComboBox(mainWindow.PhaseTwoMeasureUnit);
+
+        SetupUnitMeasurementComboBox(mainWindow.FirstPhaseMeasureUnit);
+        SetupUnitMeasurementComboBox(mainWindow.SecondPhaseMeasureUnit);
 
         OpenFileCommand = new RelayCommand(OpenFile);
         ChooseQuantityForMechanismCommand = new RelayCommand(ChooseQuantityForMechanism);
         ChoosePhaseOneDurationCommand = new RelayCommand(ChoosePhaseOneDuration);
         ChoosePhaseTwoDurationCommand = new RelayCommand(ChoosePhaseTwoDuration);
         ChooseNumberOfEpochsCommand = new RelayCommand(ChooseNumberOfEpochs);
-        StartCommand = new RelayCommand(StartCalculations);
-        StopCommand = new RelayCommand(StopCalculations);
-        UpdateCommand = new RelayCommand(UpdateCalculations);
-		ContinueCommand = new RelayCommand(ContinueCalculations);
+        StartPauseCommand = new RelayCommand(StartPauseCalculations);
+		AbortCommand = new RelayCommand(AbortCalculations);
 
         ReceivedStatusUpdate += UpdateStatus;
         ReceivedBestResult += UpdateBestResult;
@@ -228,54 +203,49 @@ public class MainViewModel : INotifyPropertyChanged
 
     private static void SetupUnitMeasurementComboBox(Selector comboBox)
     {
-        comboBox.Items.Add(MeasurementUnits.Milliseconds);
         comboBox.Items.Add(MeasurementUnits.Seconds);
+        comboBox.Items.Add(MeasurementUnits.Milliseconds);
 
         comboBox.SelectedIndex = 0;
     }
 
-    private void StartCalculations(object obj)
+    private void StartPauseCalculations(object obj)
     {
-        CurrentEpoch = 0;
-        Start = true;
-        Stop = false;
-
         if (!ValidateDataToSend()) return;
 
-        var dto = new CalculationDTO(
-            NormalizeDuration(PhaseOneDuration, MainWindow.PhaseOneMeasureUnit.Text),
-            NormalizeDuration(PhaseTwoDuration, MainWindow.PhaseTwoMeasureUnit.Text),
-            QuantityForMechanism,
-            NumberOfEpochs,
-            Points!,
-            MainWindow.Mechanism.Text);
+        if (MainWindow.StartPauseButton.Content.ToString() == "Run")
+        {
+            if (CalculationStatus is "Ready!" or "Aborted!" || SolutionCount == null) SolutionCount = 0.ToString();
 
-        _communicator.StartOrResumeCalculations(dto);
-        _communicator.ReceiveMessages();
+            var dto = new CalculationDTO(
+                NormalizeDuration(PhaseOneDuration, MainWindow.FirstPhaseMeasureUnit.Text),
+                NormalizeDuration(PhaseTwoDuration, MainWindow.SecondPhaseMeasureUnit.Text),
+                MainWindow.Mechanism.Text,
+                QuantityForMechanism,
+                CurrentEpoch,
+                NumberOfEpochs,
+                Points!,
+                int.Parse(SolutionCount)
+            );
 
-        MainWindow.EnableWindowClosing();
+            CalculationStatus = "";
+
+            _communicator.StartCalculations(dto);
+            SetControlsEnabledStatusTo(false);
+            MainWindow.DisableWindowClosing();
+
+            MainWindow.StartPauseButton.Content = "Pause";
+        }
+        else
+        {   
+            CalculationStatus = "Paused!";
+            SetControlsEnabledStatusTo(true);
+            _communicator.AbortCalculations();
+            
+            MainWindow.StartPauseButton.Content = "Run";
+        }
     }
-
-	private void ContinueCalculations(object obj)
-	{
-		Start = true;
-		Stop = false;
-        
-        if (!ValidateDataToSend()) return;
-
-        var dto = new CalculationDTO(
-            NormalizeDuration(PhaseOneDuration, MainWindow.PhaseOneMeasureUnit.Text),
-            NormalizeDuration(PhaseTwoDuration, MainWindow.PhaseTwoMeasureUnit.Text),
-            QuantityForMechanism,
-            NumberOfEpochs - CurrentEpoch,
-            Points!,
-            MainWindow.Mechanism.Text);
-
-        _communicator.StartOrResumeCalculations(dto);
-
-		MainWindow.EnableWindowClosing();
-	}
-
+    
     private bool ValidateDataToSend()
     {
         // ReSharper disable once InvertIf
@@ -293,20 +263,33 @@ public class MainViewModel : INotifyPropertyChanged
         return true;
     }
 
-    private void EditCalculations()
+	private void AbortCalculations(object obj)
     {
-        if (Start)
-        {
-            MainWindow.EnableWindowClosing();
-        }
-        else
-        {
-            MainWindow.DisableWindowClosing();
-        }
+        CurrentEpoch = 0;
+        CalculationStatus = "Aborted!";
+        MainWindow.StartPauseButton.Content = "Run";
 
-        _communicator.UpdateCalculationSettings(Stop, 
-            NormalizeDuration(PhaseOneDuration, MainWindow.PhaseOneMeasureUnit.Text),
-            NormalizeDuration(PhaseTwoDuration, MainWindow.PhaseTwoMeasureUnit.Text));
+        _communicator.AbortCalculations();
+        SetControlsEnabledStatusTo(true);
+        MainWindow.EnableWindowClosing();
+	}
+
+    private void SetControlsEnabledStatusTo(bool status)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            MainWindow.OpenFileButton.IsEnabled = status;
+
+            MainWindow.EpochsAmountTextBox.IsEnabled = status;
+
+            MainWindow.Mechanism.IsEnabled = status;
+            MainWindow.MechanismsEngagedTextBox.IsEnabled = status;
+
+            MainWindow.FirstPhaseTimeoutTextBox.IsEnabled = status;
+            MainWindow.FirstPhaseMeasureUnit.IsEnabled = status;
+            MainWindow.SecondPhaseTimeoutTextBox.IsEnabled = status;
+            MainWindow.SecondPhaseMeasureUnit.IsEnabled = status;
+        });
     }
 
     private static int NormalizeDuration(int duration, string unit)
@@ -317,11 +300,6 @@ public class MainViewModel : INotifyPropertyChanged
             MeasurementUnits.Seconds => duration * 1000,
             _ => duration
         };
-    }
-    
-	private void UpdateCalculations(object obj)
-    {
-        EditCalculations();
     }
 
     private void ChooseNumberOfEpochs(object obj)
@@ -340,18 +318,30 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void UpdateStatus(CalculationStatusDTO calculationStatusDTO)
     {
-        CurrentEpoch = calculationStatusDTO.Epoch;
         SolutionCount = calculationStatusDTO.SolutionNo.ToString();
 
-        if (calculationStatusDTO.Epoch == NumberOfEpochs)
+        if (calculationStatusDTO.Epoch == NumberOfEpochs || CalculationStatus == "Ready!")
         {
+            CurrentEpoch = 0;
+
             CalculationStatus = "Ready!";
-            MainWindow.DisableWindowClosing();
+            MainWindow.EnableWindowClosing();
+            SetControlsEnabledStatusTo(true);
 
             return;
         }
 
-        CalculationStatus = $"Phase: {calculationStatusDTO.Phase}";
+        CurrentEpoch = calculationStatusDTO.Epoch;
+
+        if (CalculationStatus is not "Paused!" or "Aborted!")
+        {
+            CalculationStatus = $"Phase: {calculationStatusDTO.Phase}";
+        }
+        else
+        {
+            MainWindow.StartPauseButton.Content = "Run";
+            SetControlsEnabledStatusTo(true);
+        }
     }
 
     private void DrawGraph(ICollection<Point> points)
@@ -379,12 +369,6 @@ public class MainViewModel : INotifyPropertyChanged
         PhaseTwoDuration = int.TryParse(integerUpDown?.Text, out var result) ? result : 0;
     }
 
-    private void StopCalculations(object obj)
-    {
-        Stop = true;
-        Start = false;
-	}
-
     private void ChooseQuantityForMechanism(object obj)
     {
         var integerUpDown = obj as TextBox;
@@ -393,11 +377,25 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void OpenFile(object obj)
     {
+        if (CurrentEpoch > 0)
+        {
+            MessageBox.Show("Please abort or finish the current calculations!", 
+                "Unfinished calculations", 
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            return;
+        }
+
+        BestResult = "";
+        SolutionCount = "";
+        CalculationStatus = "";
+
         var openFileDialog = new OpenFileDialog();
         if (openFileDialog.ShowDialog() == false) return;
 
-        FileName = openFileDialog.FileName;
-        Points = FileManager.ReadPoints(FileName);
+        Points = FileManager.ReadPoints(openFileDialog.FileName);
+        FileName = openFileDialog.FileName.Split('\\').Last();
         OrderedNodes = Points.Select((p, id) => new Node(id, p)).ToList();
         
         DrawGraph(Points);

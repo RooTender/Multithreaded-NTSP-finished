@@ -2,12 +2,12 @@
 
 namespace Bridge
 {
-    public class RabbitQueue
+    public static class RabbitQueue
     {
         public static class QueueTypes
         {
             public const string Start = "Start";
-            public const string Edit = "Edit";
+            public const string Stop = "Stop";
             public const string UpdateBest = "UpdateBest";
             public const string Status = "Status";
         }
@@ -24,7 +24,7 @@ namespace Bridge
             var connection = factory.CreateConnection();
             var channel = connection.CreateModel();
 
-            var queueTypes = new[] { QueueTypes.Start, QueueTypes.Edit, QueueTypes.UpdateBest, QueueTypes.Status };
+            var queueTypes = new[] { QueueTypes.Start, QueueTypes.Stop, QueueTypes.UpdateBest, QueueTypes.Status };
             foreach (var queueType in queueTypes)
             {
                 channel.QueueDeclare(

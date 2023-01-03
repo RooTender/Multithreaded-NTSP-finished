@@ -24,9 +24,9 @@ public class MultiTaskNTSP : ParallelNTSP
         return pmx;
     }
 
-    protected override BestCycle BestCycleParallelMechanism(List<Point> points, CancellationToken token)
+    protected override ThreeOpt BestCycleParallelMechanism(List<Point> points, CancellationToken token)
     {
-        var bestCycle = new BestCycle(points);
+        var bestCycle = new ThreeOpt(points);
         _tasks.Add(Task.Factory.StartNew(() =>
         {
             bestCycle.Find();

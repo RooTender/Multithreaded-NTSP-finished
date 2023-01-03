@@ -3,8 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:Behaviors="http://schemas.microsoft.com/xaml/behaviors"
-        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:oxy="clr-namespace:OxyPlot.Wpf;assembly=OxyPlot.Wpf"
         mc:Ignorable="d"
         Title="MultiThreaded NTSP"  Height="600" Width="1000">
@@ -13,71 +11,62 @@
             <StackPanel Width="250" HorizontalAlignment="Left" Margin="0,10,0,-10">
 
                 <StackPanel Margin="5">
-                    <Label FontWeight="Bold">Open file</Label>
-                    <TextBox TextWrapping="NoWrap" Text="{Binding FileName}" Width="auto" IsReadOnly = "True"/>
-                    <Button Content="Open file" Command="{Binding OpenFileCommand}" Width="auto" />
+                    <Label FontWeight="Bold">Input data</Label>
+                    <TextBlock TextWrapping="NoWrap" Text="{Binding FileName}" Width="auto"/>
+                    <Button Name="OpenFileButton" Content="Open file" Command="{Binding OpenFileCommand}" Width="auto" />
                 </StackPanel>
-                
+
                 <StackPanel Margin="5">
-                    <Label FontWeight="Bold">Number of epochs</Label>
-                    <TextBox Name="EpochsQuantityTextBox" TextWrapping="Wrap" Text="{Binding NumberOfEpochs}" />
+                    <Label FontWeight="Bold">Epochs amount</Label>
+                    <TextBox Name="EpochsAmountTextBox" TextWrapping="Wrap" Text="{Binding NumberOfEpochs}" />
                 </StackPanel>
-                
+
                 <StackPanel Margin="5">
                     <Label FontWeight="Bold">Mechanism</Label>
-                    </StackPanel>
-
-                <StackPanel Margin="5">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
+                            <ColumnDefinition Width="37*"/>
+                            <ColumnDefinition Width="140*"/>
+                            <ColumnDefinition Width="5"/>
+                            <ColumnDefinition Width="59*" />
                         </Grid.ColumnDefinitions>
 
-                        <ComboBox Name="Mechanism" SelectedIndex="0" Margin="0,0,5,0">
+                        <ComboBox Name="Mechanism" SelectedIndex="0" Grid.ColumnSpan="2">
                             <ComboBoxItem Content="Threads" />
                             <ComboBoxItem Content="Tasks" />
                         </ComboBox>
-                        <TextBox Grid.Column="1"  Margin="5,0,0,0" Name="MechanismQuantityTextBox" TextWrapping="Wrap" Text="{Binding QuantityForMechanism}" />
+                        <TextBox Name="MechanismsEngagedTextBox" Grid.Column="2" TextWrapping="Wrap" Text="{Binding QuantityForMechanism}" Grid.ColumnSpan="2" Margin="5,0,0,0" />
                     </Grid>
                 </StackPanel>
 
                 <StackPanel Margin="5">
-                    <Label FontWeight="Bold">How long</Label>
+                    <Label FontWeight="Bold">Phase timeouts</Label>
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="5" />
                             <ColumnDefinition />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="5" />
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5" />
                             <RowDefinition Height="20" />
                             <RowDefinition Height="5" />
                             <RowDefinition Height="20" />
-                            <RowDefinition Height="5" />
                         </Grid.RowDefinitions>
 
-                        <Label Padding="0" Grid.Row="1" Grid.Column="0">Phase 1</Label>
-                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding PhaseOneDuration}"/>
-                        
-                        <Grid Grid.Row="1" Grid.Column="4">
-                            <ComboBox Name="PhaseOneMeasureUnit"/>
-                        </Grid>
+                        <Label Padding="0" Grid.Row="0" Grid.Column="0">Phase 1 (PMX)</Label>
+                        <TextBox Name="FirstPhaseTimeoutTextBox" Grid.Row="0" Grid.Column="2" Text="{Binding PhaseOneDuration}"/>
+                        <ComboBox Grid.Row="0" Grid.Column="4" Name="FirstPhaseMeasureUnit"/>
 
-                        <Label Padding="0" Grid.Row="3" Grid.Column="0">Phase 2</Label>
-                        <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding PhaseTwoDuration}"/>
-
-                        <Grid Grid.Row="3" Grid.Column="4">
-                            <ComboBox Name="PhaseTwoMeasureUnit"/>
-                        </Grid>
+                        <Label Padding="0" Grid.Row="2" Grid.Column="0">Phase 2 (3-opt)</Label>
+                        <TextBox Name="SecondPhaseTimeoutTextBox" Grid.Row="2" Grid.Column="2" Text="{Binding PhaseTwoDuration}"/>
+                        <ComboBox Grid.Row="2" Grid.Column="4" Name="SecondPhaseMeasureUnit"/>
                     </Grid>
                 </StackPanel>
 
                 <StackPanel Margin="5">
-                    <Label FontWeight="Bold">Progress &amp; result</Label>
+                    <Label FontWeight="Bold">Progress</Label>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition />
@@ -85,8 +74,6 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5" />
-                            <RowDefinition Height="20" />
                             <RowDefinition Height="5" />
                             <RowDefinition Height="20" />
                             <RowDefinition Height="5" />
@@ -101,11 +88,10 @@
                         <Label Padding="0" Grid.Row="3" Grid.Column="0">Solution Count</Label>
                         <TextBox Grid.Row="3" Grid.Column="2" TextWrapping="NoWrap" Text="{Binding SolutionCount}" Width="auto" IsReadOnly = "True"/>
                         <ProgressBar Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Minimum="0" Maximum="{Binding NumberOfEpochs}" Value="{Binding CurrentEpoch}" Name="CalculationProgress" />
-                        <TextBox Grid.Row="7" Grid.Column="2" TextWrapping="NoWrap" Text="{Binding CalculationStatus}" Width="auto" IsReadOnly = "True"/>
                     </Grid>
-
+                    <TextBlock TextWrapping="NoWrap" TextAlignment="Center" Text="{Binding CalculationStatus}" Width="auto"/>
                 </StackPanel>
-                <!--Start & stop-->
+
                 <StackPanel Margin="5">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -114,28 +100,22 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="5" />
                             <RowDefinition Height="20" />
-                            <RowDefinition Height="5" />
-                            <RowDefinition Height="20" />
-                            <RowDefinition Height="5" />
                         </Grid.RowDefinitions>
 
-                        <Button Grid.Row="1" Grid.Column="0" Content="Start" Command="{Binding StartCommand}" Width="auto" />
-                        <Button Grid.Row="1" Grid.Column="2" Content="Update" Command="{Binding UpdateCommand}" Width="auto" />
-                        <Button Grid.Row="3" Grid.Column="0" Content="Stop" Command="{Binding StopCommand}" Width="auto" />
-                        <Button Grid.Row="3" Grid.Column="2" Content="Continue" Command="{Binding ContinueCommand}" Width="auto" />
+                        <Button Name="StartPauseButton" Grid.Column="0" Content="Run" Command="{Binding StartPauseCommand}" Width="auto" />
+                        <Button Grid.Column="2" Content="Abort" Command="{Binding AbortCommand}" Width="auto" />
                     </Grid>
 
                 </StackPanel>
             </StackPanel>
         </Border>
-        
+
         <!--Graph-->
         <oxy:PlotView Model="{Binding PlotModel}" Margin="300,10,10,170"/>
-        
+
         <!--Table with nodes-->
-        <DataGrid Name="OptimalTourDataGrid" ItemsSource="{Binding Nodes}" HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="600" Height="155" Margin="0,0,10,10" ColumnWidth="200"/>
+        <DataGrid ItemsSource="{Binding Nodes}" HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="600" Height="155" Margin="0,0,10,10" ColumnWidth="200"/>
 
     </Grid>
 </Window>

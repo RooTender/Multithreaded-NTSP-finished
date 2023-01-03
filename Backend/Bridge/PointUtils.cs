@@ -25,7 +25,7 @@ namespace Calculator
 
             return result;
         }
-
+        
         public static double GetTotalDistance(this IEnumerable<Node<Point>> points)
         {
             return points.Sum(node => node.Value.Distance(node.Next()!.Value));

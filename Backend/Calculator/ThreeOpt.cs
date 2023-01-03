@@ -2,11 +2,11 @@
 
 namespace Calculator
 {
-    public class BestCycle
+    public class ThreeOpt
     {
         private List<Node<Point>> _bestResult;
         
-        public BestCycle(IReadOnlyList<Point> bestResult)
+        public ThreeOpt(IReadOnlyList<Point> bestResult)
         {
             _bestResult = PointsToNodeCycle(bestResult);
         }

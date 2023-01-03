@@ -16,7 +16,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Point.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)PointUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DTOs\CalculationStatusDTO.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)DTOs\CalculationChangesDTO.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)DTOs\" />
