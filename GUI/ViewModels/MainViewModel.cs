@@ -226,13 +226,13 @@ public class MainViewModel : INotifyPropertyChanged
                 int.Parse(SolutionCount)
             );
 
-            CalculationStatus = "";
+            Application.Current.Dispatcher.Invoke(() => CalculationStatus = "");
 
             _communicator.StartCalculations(dto);
             SetControlsEnabledStatusTo(false);
             MainWindow.DisableWindowClosing();
 
-            MainWindow.StartPauseButton.Content = "Pause";
+            Application.Current.Dispatcher.Invoke(() => MainWindow.StartPauseButton.Content = "Pause");
         }
         else
         {   
@@ -240,7 +240,7 @@ public class MainViewModel : INotifyPropertyChanged
             SetControlsEnabledStatusTo(true);
             _communicator.AbortCalculations();
             
-            MainWindow.StartPauseButton.Content = "Run";
+            Application.Current.Dispatcher.Invoke(() => MainWindow.StartPauseButton.Content = "Run");
         }
     }
     
@@ -264,8 +264,8 @@ public class MainViewModel : INotifyPropertyChanged
 	private void AbortCalculations(object obj)
     {
         CurrentEpoch = 0;
-        CalculationStatus = "Aborted!";
-        MainWindow.StartPauseButton.Content = "Run";
+        Application.Current.Dispatcher.Invoke(() => CalculationStatus = "Aborted!");
+        Application.Current.Dispatcher.Invoke(() => MainWindow.StartPauseButton.Content = "Run");
 
         _communicator.AbortCalculations();
         SetControlsEnabledStatusTo(true);
@@ -322,7 +322,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             CurrentEpoch = 0;
 
-            CalculationStatus = "Ready!";
+            Application.Current.Dispatcher.Invoke(() => CalculationStatus = "Ready!");
             MainWindow.EnableWindowClosing();
             SetControlsEnabledStatusTo(true);
 
@@ -333,11 +333,11 @@ public class MainViewModel : INotifyPropertyChanged
 
         if (CalculationStatus is not "Paused!" or "Aborted!")
         {
-            CalculationStatus = $"Phase: {calculationStatusDTO.Phase}";
+            Application.Current.Dispatcher.Invoke(() => CalculationStatus = $"Phase: {calculationStatusDTO.Phase}");
         }
         else
         {
-            MainWindow.StartPauseButton.Content = "Run";
+            Application.Current.Dispatcher.Invoke(() => MainWindow.StartPauseButton.Content = "Run");
             SetControlsEnabledStatusTo(true);
         }
     }
