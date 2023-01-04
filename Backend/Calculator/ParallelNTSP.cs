@@ -15,8 +15,8 @@ public abstract class ParallelNTSP
     private readonly int _maxEpochs;
     private double _bestDistance;
     private int _currentEpoch;
-    private int _firstPhaseTimeout;
-    private int _secondPhaseTimeout;
+    private readonly int _firstPhaseTimeout;
+    private readonly int _secondPhaseTimeout;
 
     public static int CalculatedSolutions;
 
@@ -61,12 +61,6 @@ public abstract class ParallelNTSP
         _cancellationToken.Cancel();
     }
 
-    public void UpdatePhasesTimeouts(int firstPhase, int secondPhase)
-    {
-        _firstPhaseTimeout = firstPhase;
-        _secondPhaseTimeout = secondPhase;
-    }
-
     protected abstract PMX PMXParallelMechanism(List<Point> points, CancellationToken token);
 
     protected abstract ThreeOpt BestCycleParallelMechanism(List<Point> points, CancellationToken token);
@@ -81,15 +75,18 @@ public abstract class ParallelNTSP
         using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken.Token, cancellationToken.Token);
 
         var pmxList = new List<PMX>(_mechanismsEngaged);
-        for (var i = 0; i < _mechanismsEngaged; i++)
-        {
-            pmxList.Add(PMXParallelMechanism(points, tokenLink.Token));
-        }
-
-        cancellationToken.CancelAfter(_firstPhaseTimeout);
-
+        
         try
         {
+            _cancellationToken.Token.ThrowIfCancellationRequested();
+
+            for (var i = 0; i < _mechanismsEngaged; i++)
+            {
+                pmxList.Add(PMXParallelMechanism(points, tokenLink.Token));
+            }
+
+            cancellationToken.CancelAfter(_firstPhaseTimeout);
+
             _cancellationToken.Token.ThrowIfCancellationRequested();
             BarrierSynchronization(tokenLink, _firstPhaseTimeout);
             _cancellationToken.Token.ThrowIfCancellationRequested();
@@ -128,15 +125,18 @@ public abstract class ParallelNTSP
         using var tokenLink = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken.Token, cancellationToken.Token);
         
         var workers = new List<ThreeOpt>(_mechanismsEngaged);
-        for (var i = 0; i < _mechanismsEngaged; i++)
-        {
-            workers.Add(BestCycleParallelMechanism(points[i], tokenLink.Token));
-        }
-
-        cancellationToken.CancelAfter(_secondPhaseTimeout);
-
+        
         try
         {
+            _cancellationToken.Token.ThrowIfCancellationRequested();
+
+            for (var i = 0; i < _mechanismsEngaged; i++)
+            {
+                workers.Add(BestCycleParallelMechanism(points[i], tokenLink.Token));
+            }
+
+            cancellationToken.CancelAfter(_secondPhaseTimeout);
+
             _cancellationToken.Token.ThrowIfCancellationRequested();
             BarrierSynchronization(tokenLink, _secondPhaseTimeout);
             _cancellationToken.Token.ThrowIfCancellationRequested();

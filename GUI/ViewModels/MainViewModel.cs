@@ -323,6 +323,7 @@ public class MainViewModel : INotifyPropertyChanged
             CurrentEpoch = 0;
 
             Application.Current.Dispatcher.Invoke(() => CalculationStatus = "Ready!");
+            Application.Current.Dispatcher.Invoke(() => MainWindow.StartPauseButton.Content = "Run");
             MainWindow.EnableWindowClosing();
             SetControlsEnabledStatusTo(true);
 
