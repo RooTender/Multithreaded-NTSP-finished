@@ -4,7 +4,6 @@ using OxyPlot;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using GUI.Utils;
 using System.Collections.ObjectModel;
 using GUI.Model;
 using System.Linq;
@@ -16,7 +15,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Calculator;
-using GUI.Commands;
 using Point = Bridge.Point;
 
 namespace GUI.ViewModels;
@@ -53,7 +51,7 @@ public class MainViewModel : INotifyPropertyChanged
     private PlotModel _plotModel;
     private ObservableCollection<Node> _nodes;
     private int _currentEpoch;
-    private readonly MessagingHelper _communicator;
+    private readonly MessageHandler _communicator;
 
     public string FileName
     {
@@ -198,7 +196,7 @@ public class MainViewModel : INotifyPropertyChanged
         ReceivedStatusUpdate += UpdateStatus;
         ReceivedBestResult += UpdateBestResult;
 
-        _communicator = new MessagingHelper(ReceivedStatusUpdate, ReceivedBestResult);
+        _communicator = new MessageHandler(ReceivedStatusUpdate, ReceivedBestResult);
     }
 
     private static void SetupUnitMeasurementComboBox(Selector comboBox)
@@ -215,7 +213,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         if (MainWindow.StartPauseButton.Content.ToString() == "Run")
         {
-            if (CalculationStatus is "Ready!" or "Aborted!" || SolutionCount == null) SolutionCount = 0.ToString();
+            if (CalculationStatus is "Ready!" or "Aborted!" || string.IsNullOrEmpty(SolutionCount)) SolutionCount = 0.ToString();
 
             var dto = new CalculationDTO(
                 NormalizeDuration(PhaseOneDuration, MainWindow.FirstPhaseMeasureUnit.Text),
@@ -394,7 +392,7 @@ public class MainViewModel : INotifyPropertyChanged
         var openFileDialog = new OpenFileDialog();
         if (openFileDialog.ShowDialog() == false) return;
 
-        Points = FileManager.ReadPoints(openFileDialog.FileName);
+        Points = FileReader.ReadPoints(openFileDialog.FileName);
         FileName = openFileDialog.FileName.Split('\\').Last();
         OrderedNodes = Points.Select((p, id) => new Node(id, p)).ToList();
         

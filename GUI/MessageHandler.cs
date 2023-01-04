@@ -6,15 +6,15 @@ using System.Text.Json;
 using System.Text;
 using GUI.ViewModels;
 
-namespace GUI.Utils;
+namespace GUI;
 
-public class MessagingHelper
+public class MessageHandler
 {
     private readonly IModel _channel;
     private readonly StatusNotifier _statusNotifier;
     private readonly NewResultNotifier _newResultNotifier;
 
-    public MessagingHelper(StatusNotifier statusNotifier, NewResultNotifier newResultNotifier)
+    public MessageHandler(StatusNotifier statusNotifier, NewResultNotifier newResultNotifier)
     {
         _statusNotifier = statusNotifier;
         _newResultNotifier = newResultNotifier;
@@ -44,22 +44,22 @@ public class MessagingHelper
         {
             var body = sender.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
-            
+
             switch (sender.RoutingKey)
             {
                 case RabbitQueue.QueueTypes.Status:
-                {
-                    var results = JsonSerializer.Deserialize<CalculationStatusDTO>(message);
-                    if (results != null) _statusNotifier(results);
-                    break;
-                }
+                    {
+                        var results = JsonSerializer.Deserialize<CalculationStatusDTO>(message);
+                        if (results != null) _statusNotifier(results);
+                        break;
+                    }
 
                 case RabbitQueue.QueueTypes.UpdateBest:
-                {
-                    var results = JsonSerializer.Deserialize<List<Point>>(message);
-                    if (results != null) _newResultNotifier(results);
-                    break;
-                }
+                    {
+                        var results = JsonSerializer.Deserialize<List<Point>>(message);
+                        if (results != null) _newResultNotifier(results);
+                        break;
+                    }
             }
         };
     }

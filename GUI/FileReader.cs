@@ -5,15 +5,16 @@ using System.IO;
 using System.Globalization;
 using Bridge;
 
-namespace GUI.Utils;
+namespace GUI;
 
-public static class FileManager
+public static class FileReader
 {
     public static List<Point> ReadPoints(string filePath)
     {
-        return (from line in File.ReadLines(filePath) where !char.IsLetter(line[0])
-            where line != "EOF"
-            select ReadPoint(line)).ToList();
+        return (from line in File.ReadLines(filePath)
+                where !char.IsLetter(line[0])
+                where line != "EOF"
+                select ReadPoint(line)).ToList();
     }
 
     private static Point ReadPoint(string line)
